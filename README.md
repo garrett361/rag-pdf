@@ -25,9 +25,9 @@ For parsing:
 
 ### Example Workflow
 
-- Parse folder with docs and write chunks into `json` file via `python3 -m rag.parsing --input <path-to-input-dir>
---output <path-to-output-dir>`
-- Chunk
+- Parse folder with docs and write chunks into `json` file via `python3 -m rag.parsing --input <path-to-docs-dir>
+--output <path-to-parsing-output-dir>`
+- Chunk `python3 -m rag.chunk --input <path-to-parsing-output-dir> --output <path-to-chunks-dir>`
 - Embed
 
   -------------- ORIGINAL README BELOW --------------

@@ -8,6 +8,7 @@ import torch
 from loguru import logger
 from unstructured.partition.auto import partition
 
+from rag._defaults import DEFAULT_CHUNK_STRAT
 from rag.rag_schema import DataElement, DataType, Document, Metadata
 
 
@@ -116,11 +117,12 @@ if __name__ == "__main__":
     parser.add_argument("--input", type=str, help="input directory")
     parser.add_argument("--output", default="./output", help="output directory")
     parser.add_argument("--strategy", default="auto", help="parsing strategy")
-    parser.add_argument("--chunking_strategy", default=None, help="chunking strategy")
+    parser.add_argument(
+        "--chunking_strategy", default=DEFAULT_CHUNK_STRAT, help="chunking strategy"
+    )
     parser.add_argument(
         "--folder_tags",
-        default=False,
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
         help="folder tags",
     )
     args = parser.parse_args()

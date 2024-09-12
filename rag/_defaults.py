@@ -1,0 +1,2 @@
+DEFAULT_HF_EMBED_MODEL = "BAAI/bge-base-en-v1.5"
+DEFAULT_CHUNK_STRAT = "by_title"
