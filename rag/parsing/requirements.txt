@@ -1,3 +1,0 @@
-unstructured[all-docs]
-pachyderm-sdk
-loguru
