@@ -2,11 +2,13 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 import torch
 from loguru import logger
-from rag.rag_schema import DataElement, DataType, Document, Metadata
 from unstructured.partition.auto import partition
+
+from rag.rag_schema import DataElement, DataType, Document, Metadata
 
 parser = argparse.ArgumentParser(description="File Parser")
 parser.add_argument("--input", type=str, help="input directory")
@@ -82,8 +84,14 @@ def parse_url(url, output, strategy, chunking_strategy, tag=None):
         json.dump(output_list, f, indent=4)
 
 
-def main(args):
-    for dirpath, dirs, files in os.walk(args.input):
+def main(
+    input: str,
+    output: str,
+    strategy: str,
+    chunking_strategy: Optional[str],
+    folder_tags: bool = False,
+):
+    for dirpath, _, files in os.walk(input):
         for file in files:
             input_file = os.path.join(dirpath, file)
             if input_file.endswith(".url"):
@@ -92,20 +100,18 @@ def main(args):
                     lines = [line.rstrip() for line in file]
                 for url in lines:
                     logger.info(f"Processing {url}")
-                    if args.folder_tags:
-                        tag = dirpath.replace(args.input, "")
+                    if folder_tags:
+                        tag = dirpath.replace(input, "")
                         if tag.endswith("/"):
                             tag = tag[:-1]
                         if tag.startswith("/"):
                             tag = tag[1:]
                     else:
                         tag = None
-                    parse_url(
-                        url, args.output, args.strategy, args.chunking_strategy, tag
-                    )
+                    parse_url(url, output, strategy, chunking_strategy, tag)
             else:
-                if args.folder_tags:
-                    tag = dirpath.replace(args.input, "")
+                if folder_tags:
+                    tag = dirpath.replace(input, "")
                     if tag.endswith("/"):
                         tag = tag[:-1]
                     if tag.startswith("/"):
@@ -114,9 +120,7 @@ def main(args):
                         tag = tag.split("/")[0]
                 else:
                     tag = None
-                parse(
-                    input_file, args.output, args.strategy, args.chunking_strategy, tag
-                )
+                parse(input_file, output, strategy, chunking_strategy, tag)
 
 
 def init():
@@ -129,4 +133,4 @@ if __name__ == "__main__":
     logger.info("Starting processing")
     if args.folder_tags:
         logger.info("Using folder names as tags")
-    main(args)
+    main(**vars(args))
