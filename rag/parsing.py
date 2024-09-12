@@ -10,18 +10,6 @@ from unstructured.partition.auto import partition
 
 from rag.rag_schema import DataElement, DataType, Document, Metadata
 
-parser = argparse.ArgumentParser(description="File Parser")
-parser.add_argument("--input", type=str, help="input directory")
-parser.add_argument("--output", default="./output", help="output directory")
-parser.add_argument("--strategy", default="auto", help="parsing strategy")
-parser.add_argument("--chunking_strategy", default=None, help="chunking strategy")
-parser.add_argument(
-    "--folder_tags",
-    default=False,
-    action=argparse.BooleanOptionalAction,
-    help="folder tags",
-)
-
 
 def elements_to_rag_schema(elements: list, tag=None):
     output_list = Document()
@@ -123,13 +111,21 @@ def main(
                 parse(input_file, output, strategy, chunking_strategy, tag)
 
 
-def init():
-    logger.info(f"GPU Available: {torch.cuda.is_available()}")
-
-
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="File Parser")
+    parser.add_argument("--input", type=str, help="input directory")
+    parser.add_argument("--output", default="./output", help="output directory")
+    parser.add_argument("--strategy", default="auto", help="parsing strategy")
+    parser.add_argument("--chunking_strategy", default=None, help="chunking strategy")
+    parser.add_argument(
+        "--folder_tags",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="folder tags",
+    )
     args = parser.parse_args()
-    init()
+
+    logger.info(f"GPU Available: {torch.cuda.is_available()}")
     logger.info("Starting processing")
     if args.folder_tags:
         logger.info("Using folder names as tags")
