@@ -9,7 +9,7 @@
 Building on top of the rag-pdf demo below.
 
 For ease of development, I am cannibalizing parts of the original code and putting them under
-`components/`.
+`rag/`.
 
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
 `requirements.txt` is the one I have in my `venv` while developing.
