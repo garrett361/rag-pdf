@@ -12,7 +12,7 @@ from rag._defaults import DEFAULT_CHUNK_STRAT
 from rag.rag_schema import DataElement, DataType, Document, Metadata
 
 
-def elements_to_rag_schema(elements: list, tag=None):
+def elements_to_rag_schema(elements: list, tag=None) -> list[DataElement]:
     output_list = Document()
     for element in elements:
         el = element.to_dict()
@@ -43,7 +43,7 @@ def elements_to_rag_schema(elements: list, tag=None):
     return output_list
 
 
-def parse(input_file, output, strategy, chunking_strategy, tag=None):
+def parse(input_file, output, strategy, chunking_strategy, tag=None) -> None:
     logger.info(f"Processing {input_file}")
     elements = partition(
         filename=input_file,
@@ -51,6 +51,7 @@ def parse(input_file, output, strategy, chunking_strategy, tag=None):
         strategy=strategy,
         chunking_strategy=chunking_strategy,
     )
+    logger.info("Done parsing elements")
     output_list = elements_to_rag_schema(elements, tag=tag)
     output_path = os.path.join(output, Path(input_file).stem + ".json")
     with open(output_path, "w") as f:
@@ -58,7 +59,7 @@ def parse(input_file, output, strategy, chunking_strategy, tag=None):
         json.dump(output_list, f, indent=4)
 
 
-def parse_url(url, output, strategy, chunking_strategy, tag=None):
+def parse_url(url, output, strategy, chunking_strategy, tag=None) -> None:
     logger.info(f"Processing {url}")
     elements = partition(
         url=url,
@@ -79,7 +80,7 @@ def main(
     strategy: str,
     chunking_strategy: Optional[str],
     folder_tags: bool = False,
-):
+) -> None:
     for dirpath, _, files in os.walk(input):
         for file in files:
             input_file = os.path.join(dirpath, file)
