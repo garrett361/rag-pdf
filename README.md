@@ -11,6 +11,9 @@ Building on top of the rag-pdf demo below.
 For ease of development, I am cannibalizing parts of the original code and putting them under
 `rag/`.
 
+I copied the `RFQ_Commercial` dir under `private/RFQ_Commercial` which is `.gitignore`-d. This is
+only referenced in the `Makefile` which has some convenience commands.
+
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
 `rag/requirements.txt` is the one I have in my `venv` while developing, built from installing parts
 of the other `requirements.txt` instances on top of each other.
@@ -25,9 +28,9 @@ For parsing:
 
 ### Example Workflow
 
-- Parse folder with docs and write chunks into `json` file via `python3 -m rag.parsing --input <path-to-docs-dir>
---output <path-to-parsing-output-dir>`
-- Chunk `python3 -m rag.chunk --input <path-to-parsing-output-dir> --output <path-to-chunks-dir>`
+- Parse folder with docs and write chunks into `json` file via `python3 -m rag.parse --input <path-to-docs-dir>
+--output <path-to-parse-output-dir>`
+- Chunk (not sure this is necessary? `rag.parse` actually does chunking already and `rag.embed` uses `rag.parse` outputs.) `python3 -m rag.chunk --input <path-to-parse-output-dir> --output <path-to-chunks-dir>`
 - Embed
 
   -------------- ORIGINAL README BELOW --------------

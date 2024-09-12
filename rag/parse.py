@@ -53,7 +53,11 @@ def parse(input_file, output, strategy, chunking_strategy, tag=None) -> None:
     )
     logger.info("Done parsing elements")
     output_list = elements_to_rag_schema(elements, tag=tag)
-    output_path = os.path.join(output, Path(input_file).stem + ".json")
+    input_file_path = Path(input_file)
+    if not input_file_path.parent.exists():
+        os.makedirs(input_file_path.parent)
+
+    output_path = os.path.join(output, input_file_path.stem + ".json")
     with open(output_path, "w") as f:
         logger.info(f"Writing output to {output_path}")
         json.dump(output_list, f, indent=4)
