@@ -1,3 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag"
+version = "0.0.0"
+description = "RAG Prototype"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["rag"]
+
 [tool.ruff]
 line-length = 100
 
