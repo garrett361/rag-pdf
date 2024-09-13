@@ -2,7 +2,6 @@
 install:
 	pip install -e .
 
-
 .PHONY: fmt
 fmt:
 	ruff format rag
@@ -32,3 +31,14 @@ chunk:
 .PHONY: embed
 embed:
 	python -m rag.embed --data-path private/test/parsed --path-to-db private/test/embedded
+
+.PHONY: query
+query:
+	python -m rag.query "What is the name of the project?"  --path-to-db private/test/embedded
+
+.PHONY: test
+test:
+	$(MAKE) clean
+	$(MAKE) parse
+	$(MAKE) embed
+	$(MAKE) query
