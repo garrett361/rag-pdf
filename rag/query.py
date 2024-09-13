@@ -2,7 +2,6 @@ import argparse
 from typing import Union
 
 import chromadb
-import streamlit as st
 from llama_index.core import VectorStoreIndex, get_response_synthesizer
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -18,10 +17,6 @@ from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL
 
 DEFAULT_INSTRUCTIONS = "If you don't know the answer to a question, please don't share false information. \n Limit your response to 500 tokens."
 
-st.session_state.temp = 0.2
-st.session_state.top_p = 0.8
-st.session_state.max_length = 250
-
 
 def get_llm(
     model_name: str,
@@ -36,9 +31,10 @@ def get_llm(
         "max_length": max_length,
     }
     if model_name.startswith("http"):
-        st.write(f"Using OpenLLM model endpoint: {model_name}")
+        print(f"Using OpenLLM model endpoint: {model_name}")
         llm = OpenLLMAPI(address=model_name, generate_kwargs=generate_kwargs)
     else:
+        print(f"Using HF model: {model_name}")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         stopping_ids = [
             tokenizer.eos_token_id,
@@ -58,10 +54,10 @@ def load_data(
     embedding_model_path: str, path_to_db: str
 ) -> tuple[VectorStoreIndex, chromadb.GetResult]:
     if embedding_model_path.startswith("http"):
-        st.write(f"Using Embedding API model endpoint: {embedding_model_path}")
+        print(f"Using Embedding API model endpoint: {embedding_model_path}")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
     else:
-        st.write(f"Embedding model: {embedding_model_path}")
+        print(f"Embedding model: {embedding_model_path}")
         embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
     chroma_client = chromadb.PersistentClient(path_to_db)
     chroma_collection = chroma_client.get_collection(name="documents")
@@ -112,10 +108,22 @@ if __name__ == "__main__":
         help="top k results for retriever",
     )
     parser.add_argument(
+        "--temp",
+        default=0.2,
+        type=float,
+        help="Generation temp",
+    )
+    parser.add_argument(
         "--top-p",
         default=None,
         type=float,
         help="top p probability for generation",
+    )
+    parser.add_argument(
+        "--max-length",
+        default=250,
+        type=int,
+        help="Max generation toks",
     )
     parser.add_argument(
         "--cutoff",
