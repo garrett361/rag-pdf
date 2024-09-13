@@ -11,8 +11,14 @@ Building on top of the rag-pdf demo below.
 For ease of development, I am cannibalizing parts of the original code and putting them under
 `rag/`.
 
+I copied the `RFQ_Commercial` dir under `private/RFQ_Commercial` which is `.gitignore`-d. This is
+only referenced in the `Makefile` which has some convenience commands. E.g. run `make parse` to
+parse a test pdf in `RFQ_Commercial` and then `make embed` to embed the parsed results into a vector
+db.
+
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
-`requirements.txt` is the one I have in my `venv` while developing.
+`rag/requirements.txt` is the one I have in my `venv` while developing, built from installing parts
+of the other `requirements.txt` instances on top of each other.
 
 Notes when running/developing locally on an M1 Mac.
 
@@ -22,7 +28,14 @@ For parsing:
 - Needed to `brew install poppler`
 - Needed to `brew install tesseract`
 
--------------- ORIGINAL README BELOW --------------
+### Example Workflow
+
+- Parse folder with docs and write chunks into `json` file via `python3 -m rag.parse --input <path-to-docs-dir>
+--output <path-to-parse-output-dir>`
+- Chunk (not sure this is necessary? `rag.parse` actually does chunking already and `rag.embed` uses `rag.parse` outputs.) `python3 -m rag.chunk --input <path-to-parse-output-dir> --output <path-to-chunks-dir>`
+- Embed
+
+  -------------- ORIGINAL README BELOW --------------
 
 # RAG demo (Chat with HPE Press Release version)
 
