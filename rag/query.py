@@ -1,4 +1,5 @@
 import argparse
+from pprint import pprint
 from typing import Union
 
 import chromadb
@@ -15,26 +16,29 @@ from transformers import AutoTokenizer
 
 from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL
 
-DEFAULT_INSTRUCTIONS = "If you don't know the answer to a question, please don't share false information. \n Limit your response to 500 tokens."
+DEFAULT_INSTRUCTIONS = "If you don't know the answer to a question, please don't share false information. \n Limit your response to {} tokens."
+
+
+def get_default_instructions(max_new_tokens: int) -> str:
+    return DEFAULT_INSTRUCTIONS.format(max_new_tokens)
 
 
 def get_llm(
     model_name: str,
     temp: float,
-    max_length: int,
+    max_new_tokens: int,
     top_p: float,
 ) -> Union[HuggingFaceLLM, OpenLLMAPI]:
     generate_kwargs = {
         "do_sample": True,
         "temperature": temp,
         "top_p": top_p,
-        "max_length": max_length,
     }
     if model_name.startswith("http"):
-        print(f"Using OpenLLM model endpoint: {model_name}")
+        pprint(f"Using OpenLLM model endpoint: {model_name}")
         llm = OpenLLMAPI(address=model_name, generate_kwargs=generate_kwargs)
     else:
-        print(f"Using HF model: {model_name}")
+        pprint(f"Using HF model: {model_name}")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         stopping_ids = [
             tokenizer.eos_token_id,
@@ -42,11 +46,12 @@ def get_llm(
         ]
         llm = HuggingFaceLLM(
             model_name=model_name,
-            tokenizer_name=model_name,
+            tokenizer=tokenizer,
             generate_kwargs=generate_kwargs,
+            max_new_tokens=max_new_tokens,
             stopping_ids=stopping_ids,
         )
-        print(f"Loaded model {model_name}")
+        pprint(f"Loaded model {model_name}")
     return llm
 
 
@@ -54,10 +59,10 @@ def load_data(
     embedding_model_path: str, path_to_db: str
 ) -> tuple[VectorStoreIndex, chromadb.GetResult]:
     if embedding_model_path.startswith("http"):
-        print(f"Using Embedding API model endpoint: {embedding_model_path}")
+        pprint(f"Using Embedding API model endpoint: {embedding_model_path}")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
     else:
-        print(f"Embedding model: {embedding_model_path}")
+        pprint(f"Embedding model: {embedding_model_path}")
         embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
     chroma_client = chromadb.PersistentClient(path_to_db)
     chroma_collection = chroma_client.get_collection(name="documents")
@@ -120,7 +125,7 @@ if __name__ == "__main__":
         help="top p probability for generation",
     )
     parser.add_argument(
-        "--max-length",
+        "--max-new-tokens",
         default=250,
         type=int,
         help="Max generation toks",
@@ -138,15 +143,16 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    llm = get_llm(args.model_name, args.temp, args.max_length, args.top_p)
+    llm = get_llm(args.model_name, args.temp, args.max_new_tokens, args.top_p)
 
-    index, chunks = load_data()
+    index, chunks = load_data(args.embedding_model_path, args.path_to_db)
     query_engine = create_query_engine(cutoff=args.cutoff, top_k=args.top_k, filters=None)
     output = query_engine.query(args.prompt)
     context_str = ""
     for node in output.source_nodes:
-        print(f"Context: {node.metadata}")
+        pprint(f"Context: {node.metadata}")
         context_str += node.text.replace("\n", "  \n")
+    pprint(f"Using {context_str=}")
     text_qa_template_str_llama3 = f"""
         <|begin_of_text|><|start_header_id|>user<|end_header_id|>
         Context information is
@@ -156,9 +162,10 @@ if __name__ == "__main__":
         ---------------------
         Using
         the context information, answer the question: {args.prompt}
-        {DEFAULT_INSTRUCTIONS}
+        {get_default_instructions(args.max_new_tokens)}
         <|eot_id|><|start_header_id|>assistant<|end_header_id|>
         """
+    pprint(f"Using {text_qa_template_str_llama3=}")
 
     # if args.streaming:
     #     output_response = llm.stream_complete(text_qa_template_str_llama3, formatted=True)
@@ -166,9 +173,9 @@ if __name__ == "__main__":
     #         response = st.write_stream(output_stream(output_response))
 
     output_response = llm.complete(text_qa_template_str_llama3)
-    print(f"{output_response=}")
+    pprint(f"{output_response=}")
 
-    print("REFERENCES")
+    pprint("REFERENCES")
     references = output.source_nodes
     for i in range(len(references)):
         title = references[i].node.metadata["Source"]
@@ -181,4 +188,4 @@ if __name__ == "__main__":
         out_text = f"**Text:**  \n {newtext}  \n"
         title = title.replace(" ", "%20")
 
-        print(f"{out_title=}")
+        pprint(f"{out_title=}")
