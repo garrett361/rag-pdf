@@ -27,6 +27,7 @@ For parsing:
 - Needed to `brew install libmagic`
 - Needed to `brew install poppler`
 - Needed to `brew install tesseract`
+- Needed to `pip install -U torch nltk`
 
 ### Example Workflow
 
