@@ -31,4 +31,5 @@ chunk:
 
 .PHONY: embed
 embed:
+	$(MAKE) embed 
 	python -m rag.embed --data-path private/test/parsed --path-to-db private/test/embedded

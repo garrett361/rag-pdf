@@ -12,7 +12,9 @@ For ease of development, I am cannibalizing parts of the original code and putti
 `rag/`.
 
 I copied the `RFQ_Commercial` dir under `private/RFQ_Commercial` which is `.gitignore`-d. This is
-only referenced in the `Makefile` which has some convenience commands.
+only referenced in the `Makefile` which has some convenience commands. E.g. run `make parse` to
+parse a test pdf in `RFQ_Commercial` and then `make embed` to embed the parsed results into a vector
+db.
 
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
 `rag/requirements.txt` is the one I have in my `venv` while developing, built from installing parts
