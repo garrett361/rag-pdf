@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Optional
 
 import torch
 from loguru import logger
@@ -43,13 +42,25 @@ def elements_to_rag_schema(elements: list, tag=None) -> list[DataElement]:
     return output_list
 
 
-def parse(input_file, output, strategy, chunking_strategy, tag=None) -> None:
+def parse(
+    input_file,
+    output,
+    strategy,
+    chunking_strategy: str,
+    combine_text_under_n_chars: int,
+    max_characters: int,
+    new_after_n_chars: int,
+    tag=None,
+) -> None:
     logger.info(f"Processing {input_file}")
     elements = partition(
         filename=input_file,
         skip_infer_table_types=[],
         strategy=strategy,
         chunking_strategy=chunking_strategy,
+        combine_text_under_n_chars=combine_text_under_n_chars,
+        max_characters=max_characters,
+        new_after_n_chars=new_after_n_chars,
     )
     logger.info("Done parsing elements")
     output_list = elements_to_rag_schema(elements, tag=tag)
@@ -67,58 +78,39 @@ def parse(input_file, output, strategy, chunking_strategy, tag=None) -> None:
         json.dump(output_list, f, indent=4)
 
 
-def parse_url(url, output, strategy, chunking_strategy, tag=None) -> None:
-    logger.info(f"Processing {url}")
-    elements = partition(
-        url=url,
-        skip_infer_table_types=[],
-        strategy=strategy,
-        chunking_strategy=chunking_strategy,
-    )
-    output_list = elements_to_rag_schema(elements, tag=tag)
-    output_path = os.path.join(output, Path(url).stem + ".json")
-    with open(output_path, "w") as f:
-        logger.info(f"Writing output to {output_path}")
-        json.dump(output_list, f, indent=4)
-
-
 def main(
     input: str,
     output: str,
     strategy: str,
-    chunking_strategy: Optional[str],
+    chunking_strategy: str,
+    combine_text_under_n_chars: int,
+    max_characters: int,
+    new_after_n_chars: int,
     folder_tags: bool = False,
 ) -> None:
     for dirpath, _, files in os.walk(input):
         for file in files:
             input_file = os.path.join(dirpath, file)
-            if input_file.endswith(".url"):
-                logger.info(f"Processing URL file: {input_file}")
-                with open(input_file) as file:
-                    lines = [line.rstrip() for line in file]
-                for url in lines:
-                    logger.info(f"Processing {url}")
-                    if folder_tags:
-                        tag = dirpath.replace(input, "")
-                        if tag.endswith("/"):
-                            tag = tag[:-1]
-                        if tag.startswith("/"):
-                            tag = tag[1:]
-                    else:
-                        tag = None
-                    parse_url(url, output, strategy, chunking_strategy, tag)
+            if folder_tags:
+                tag = dirpath.replace(input, "")
+                if tag.endswith("/"):
+                    tag = tag[:-1]
+                if tag.startswith("/"):
+                    tag = tag[1:]
+                if "/" in tag:
+                    tag = tag.split("/")[0]
             else:
-                if folder_tags:
-                    tag = dirpath.replace(input, "")
-                    if tag.endswith("/"):
-                        tag = tag[:-1]
-                    if tag.startswith("/"):
-                        tag = tag[1:]
-                    if "/" in tag:
-                        tag = tag.split("/")[0]
-                else:
-                    tag = None
-                parse(input_file, output, strategy, chunking_strategy, tag)
+                tag = None
+            parse(
+                input_file,
+                output,
+                strategy,
+                chunking_strategy,
+                combine_text_under_n_chars,
+                max_characters,
+                new_after_n_chars,
+                tag,
+            )
 
 
 if __name__ == "__main__":
@@ -129,6 +121,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--chunking_strategy", default=DEFAULT_CHUNK_STRAT, help="chunking strategy"
     )
+    parser.add_argument("--combine_text_under_n_chars", default=50, help="unstructured setting")
+    parser.add_argument("--max_characters", default=750, help="unstructured setting")
+    parser.add_argument("--new_after_n_chars", default=500, help="unstructured setting")
     parser.add_argument(
         "--folder_tags",
         action="store_true",
