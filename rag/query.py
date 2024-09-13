@@ -14,12 +14,23 @@ from llama_index.llms.openllm import OpenLLMAPI
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL
+from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_CHAT_TEMPLATE, DEFAULT_HF_EMBED_MODEL
 
 DEFAULT_INSTRUCTIONS = "If you don't know the answer to a question, please don't share false information. \n Limit your response to {} tokens."
+DEFAULT_SYTEM_PROMPT = "THIS IS A TEST SYSTEM PROMPT"
 
 
-def get_default_instructions(max_new_tokens: int) -> str:
+# Copying Llama2 sample sys prompt for later ref
+"""
+<s>[INST] <<SYS>>
+You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+
+If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
+<</SYS>>
+"""
+
+
+def get_prompt(max_new_tokens: int) -> str:
     return DEFAULT_INSTRUCTIONS.format(max_new_tokens)
 
 
@@ -50,6 +61,7 @@ def get_llm(
             generate_kwargs=generate_kwargs,
             max_new_tokens=max_new_tokens,
             stopping_ids=stopping_ids,
+            system_prompt=DEFAULT_SYTEM_PROMPT,
         )
         pprint(f"Loaded model {model_name}")
     return llm
@@ -76,7 +88,7 @@ def load_data(
 
 def create_query_engine(cutoff: float, top_k: int, filters=None):
     retriever = VectorIndexRetriever(index=index, similarity_top_k=top_k, filters=filters)
-    # configure response synthesizer
+    # "no_text": just return the retrieved nodes without LLM processing
     response_synthesizer = get_response_synthesizer(response_mode="no_text", streaming=False)
     query_engine = RetrieverQueryEngine.from_args(
         retriever=retriever,
@@ -135,7 +147,7 @@ if __name__ == "__main__":
         "--cutoff",
         default=0.6,
         type=float,
-        help="cutoff for similarity score",
+        help="Filter out docs with score below cutoff.",
     )
     parser.add_argument(
         "--streaming",
@@ -146,7 +158,7 @@ if __name__ == "__main__":
 
     llm = get_llm(args.model_name, args.temp, args.max_new_tokens, args.top_p)
 
-    index, chunks = load_data(args.embedding_model_path, args.path_to_db)
+    index, _ = load_data(args.embedding_model_path, args.path_to_db)
     query_engine = create_query_engine(cutoff=args.cutoff, top_k=args.top_k, filters=None)
     output = query_engine.query(args.prompt)
     context_str = ""
@@ -163,7 +175,7 @@ if __name__ == "__main__":
         ---------------------
         Using
         the context information, answer the question: {args.prompt}
-        {get_default_instructions(args.max_new_tokens)}
+        {get_prompt(args.max_new_tokens)}
         <|eot_id|><|start_header_id|>assistant<|end_header_id|>
         """
     pprint(f"Using {text_qa_template_str_llama3=}")
@@ -173,10 +185,15 @@ if __name__ == "__main__":
     #     with chat_container.chat_message("assistant", avatar="./static/logo.jpeg"):
     #         response = st.write_stream(output_stream(output_response))
 
-    output_response = llm.complete(text_qa_template_str_llama3)
-    pprint(f"{output_response=}")
+    print("\n **** RESPONSE **** \n")
+    actual_prompt = DEFAULT_HF_CHAT_TEMPLATE.format("Can you please tell me a joke?")
+    print(f"{actual_prompt=}")
+    output_response = llm.complete(
+        DEFAULT_HF_CHAT_TEMPLATE.format("why did the chicken cross the road?")
+    )
+    pprint(f"{output_response.text=}")
 
-    pprint("REFERENCES")
+    print("\n **** REFERENCES **** \n")
     references = output.source_nodes
     for i in range(len(references)):
         title = references[i].node.metadata["Source"]
