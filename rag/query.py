@@ -92,6 +92,7 @@ def output_stream(llm_stream):
 
 
 if __name__ == "__main__":
+    print("**********  QUERYING **********\n")
     parser = argparse.ArgumentParser()
     parser.add_argument("prompt", type=str, help="prompt to ask of the llm")
     parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")

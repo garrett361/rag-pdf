@@ -60,6 +60,7 @@ def main(data_path: str, embed_model: str, db: chromadb.PersistentClient):
 
 
 if __name__ == "__main__":
+    print("**********  EMBEDDING **********\n")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path-to-db",
