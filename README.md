@@ -24,10 +24,14 @@ Notes when running/developing locally on an M1 Mac.
 
 For parsing:
 
-- Needed to `brew install libmagic`
-- Needed to `brew install poppler`
-- Needed to `brew install tesseract`
-- Needed to `pip install -U torch nltk`
+- `brew install libmagic`
+- `brew install poppler`
+- `brew install tesseract`
+- `pip install -U torch nltk`
+
+For query:
+
+- `pip install llama-index-llms-openllm==0.1.4`
 
 ### Example Workflow
 
