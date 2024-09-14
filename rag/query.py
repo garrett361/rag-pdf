@@ -1,8 +1,9 @@
 import argparse
 from pprint import pprint
-from typing import Union
+from textwrap import dedent
 
 import chromadb
+import torch
 from llama_index.core import VectorStoreIndex, get_response_synthesizer
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
@@ -10,24 +11,46 @@ from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
-from llama_index.llms.openllm import OpenLLMAPI
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_CHAT_TEMPLATE, DEFAULT_HF_EMBED_MODEL
+from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL
 
 DEFAULT_INSTRUCTIONS = "If you don't know the answer to a question, please don't share false information. \n Limit your response to {} tokens."
-DEFAULT_SYTEM_PROMPT = "THIS IS A TEST SYSTEM PROMPT"
+DEFAULT_SYTEM_PROMPT = """
+You are a helpful assistant. Your role is to answer questions about one
+or more document. Several passages from the documents will be provided,
+followed by a question.  Please answer the question based only on the
+information provided in the context. If the question cannot be answered based
+on the context, say that you cannot answer. Do not make up an answer.
+                       """
+DEFAULT_SYTEM_PROMPT = dedent(DEFAULT_SYTEM_PROMPT).strip("\n")
 
 
-# Copying Llama2 sample sys prompt for later ref
-"""
-<s>[INST] <<SYS>>
-You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+def get_llama3_1_instruct_str(
+    context_str: str, prompt: str, max_new_tokens: int, system_prompt: str = DEFAULT_SYTEM_PROMPT
+) -> str:
+    """
+    From: https://llama.meta.com/docs/model-cards-and-prompt-formats/llama3_1
 
-If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
-<</SYS>>
-"""
+    dedent and strip for proper formatting: https://www.youtube.com/watch?v=ph1pfBB6kOI
+
+    Finding we still need to tab over the text to avoid unwanted whitespace.
+    """
+
+    out = f"""
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+{system_prompt} Be concise. Answer in fewer than {max_new_tokens} words.<|eot_id|>
+<|start_header_id|>user<|end_header_id|>
+
+The relevant context from the documents is below:
+
+{context_str}
+
+{prompt}<|eot_id|>
+<|start_header_id|>assistant<|end_header_id|>
+    """
+    return dedent(out).strip("\n")
 
 
 def get_prompt(max_new_tokens: int) -> str:
@@ -70,7 +93,7 @@ def get_llm(
         generate_kwargs=generate_kwargs,
         max_new_tokens=max_new_tokens,
         stopping_ids=stopping_ids,
-        model_kwargs={"torch_dtype": torch.bfloat16},
+        model_kwargs=model_kwargs,
     )
     pprint(f"Loaded model {model_name}")
     return llm
@@ -113,7 +136,7 @@ def output_stream(llm_stream):
 
 
 if __name__ == "__main__":
-    print("**********  QUERYING **********\n")
+    print("\n**********  QUERYING **********\n")
     parser = argparse.ArgumentParser()
     parser.add_argument("prompt", type=str, help="prompt to ask of the llm")
     parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")
@@ -175,34 +198,17 @@ if __name__ == "__main__":
     output = query_engine.query(args.prompt)
     context_str = ""
     for node in output.source_nodes:
-        pprint(f"Context: {node.metadata}")
-        context_str += node.text.replace("\n", "  \n")
-    pprint(f"Using {context_str=}")
-    text_qa_template_str_llama3 = f"""
-        <|begin_of_text|><|start_header_id|>user<|end_header_id|>
-        Context information is
-        below.
-        ---------------------
-        {context_str}
-        ---------------------
-        Using
-        the context information, answer the question: {args.prompt}
-        {get_prompt(args.max_new_tokens)}
-        <|eot_id|><|start_header_id|>assistant<|end_header_id|>
-        """
-    pprint(f"Using {text_qa_template_str_llama3=}")
+        print(f"Context: {node.metadata}")
+        new_text = node.text.replace("\n", "  \n")
+        print(f"\n{new_text=}\n")
+        context_str += new_text
+    print(f"Using {context_str=}")
 
-    # if args.streaming:
-    #     output_response = llm.stream_complete(text_qa_template_str_llama3, formatted=True)
-    #     with chat_container.chat_message("assistant", avatar="./static/logo.jpeg"):
-    #         response = st.write_stream(output_stream(output_response))
+    prefix = get_llama3_1_instruct_str(context_str, args.prompt, args.max_new_tokens)
 
-    print("\n **** RESPONSE **** \n")
-    actual_prompt = DEFAULT_HF_CHAT_TEMPLATE.format("Can you please tell me a joke?")
-    print(f"{actual_prompt=}")
-    output_response = llm.complete(
-        DEFAULT_HF_CHAT_TEMPLATE.format("why did the chicken cross the road?")
-    )
+    print(f"\n{prefix=}\n")
+    llm = get_llm(args.model_name, args.temp, args.max_new_tokens, args.top_p, args.use_4bit_quant)
+    output_response = llm.complete(prefix)
     pprint(f"{output_response.text=}")
 
     print("\n **** REFERENCES **** \n")

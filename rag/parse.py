@@ -114,7 +114,7 @@ def main(
 
 
 if __name__ == "__main__":
-    print("**********  PARSING **********\n")
+    print("\n**********  PARSING **********\n")
     parser = argparse.ArgumentParser(description="File Parser")
     parser.add_argument("--input", type=str, help="input directory")
     parser.add_argument("--output", default="./output", help="output directory")
