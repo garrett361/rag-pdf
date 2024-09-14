@@ -39,31 +39,26 @@ def get_llm(
     temp: float,
     max_new_tokens: int,
     top_p: float,
-) -> Union[HuggingFaceLLM, OpenLLMAPI]:
+) -> HuggingFaceLLM:
     generate_kwargs = {
         "do_sample": True,
         "temperature": temp,
         "top_p": top_p,
     }
-    if model_name.startswith("http"):
-        pprint(f"Using OpenLLM model endpoint: {model_name}")
-        llm = OpenLLMAPI(address=model_name, generate_kwargs=generate_kwargs)
-    else:
-        pprint(f"Using HF model: {model_name}")
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        stopping_ids = [
-            tokenizer.eos_token_id,
-            tokenizer.convert_tokens_to_ids("<|eot_id|>"),
-        ]
-        llm = HuggingFaceLLM(
-            model_name=model_name,
-            tokenizer=tokenizer,
-            generate_kwargs=generate_kwargs,
-            max_new_tokens=max_new_tokens,
-            stopping_ids=stopping_ids,
-            system_prompt=DEFAULT_SYTEM_PROMPT,
-        )
-        pprint(f"Loaded model {model_name}")
+    pprint(f"Using HF model: {model_name}")
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    stopping_ids = [
+        tokenizer.eos_token_id,
+    ]
+    llm = HuggingFaceLLM(
+        model_name=model_name,
+        tokenizer_name=model_name,
+        generate_kwargs=generate_kwargs,
+        max_new_tokens=max_new_tokens,
+        stopping_ids=stopping_ids,
+        model_kwargs={"torch_dtype": torch.bfloat16},
+    )
+    pprint(f"Loaded model {model_name}")
     return llm
 
 
