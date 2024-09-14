@@ -35,21 +35,35 @@ def get_prompt(max_new_tokens: int) -> str:
 
 
 def get_llm(
-    model_name: str,
-    temp: float,
-    max_new_tokens: int,
-    top_p: float,
+    model_name: str, temp: float, max_new_tokens: int, top_p: float, use_4bit_quant: bool
 ) -> HuggingFaceLLM:
+    pprint(f"Using HF model: {model_name}")
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    stopping_ids = [
+        tokenizer.eos_token_id,
+    ]
     generate_kwargs = {
         "do_sample": True,
         "temperature": temp,
         "top_p": top_p,
     }
-    pprint(f"Using HF model: {model_name}")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    stopping_ids = [
-        tokenizer.eos_token_id,
-    ]
+    model_kwargs = {"torch_dtype": torch.bfloat16}
+    if use_4bit_quant:
+        if not torch.cuda.is_available():
+            raise ValueError("--use-4bit-quant requires a GPU")
+        from transformers import BitsAndBytesConfig
+
+        model_kwargs = {
+            "quantization_config": BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+            )
+        }
+    else:
+        model_kwargs = {"torch_dtype": torch.bfloat16}
     llm = HuggingFaceLLM(
         model_name=model_name,
         tokenizer_name=model_name,
@@ -145,13 +159,16 @@ if __name__ == "__main__":
         help="Filter out docs with score below cutoff.",
     )
     parser.add_argument(
+        "--use-4bit-quant",
+        action="store_true",
+        help="Use 4-bit quantization",
+    )
+    parser.add_argument(
         "--streaming",
         help="stream responses",
         action="store_true",
     )
     args = parser.parse_args()
-
-    llm = get_llm(args.model_name, args.temp, args.max_new_tokens, args.top_p)
 
     index, _ = load_data(args.embedding_model_path, args.path_to_db)
     query_engine = create_query_engine(cutoff=args.cutoff, top_k=args.top_k, filters=None)
