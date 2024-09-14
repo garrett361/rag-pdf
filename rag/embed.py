@@ -1,20 +1,18 @@
 import argparse
 import json
 import os
-import shutil
 
 import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import TextNode
 from llama_index.core.storage import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from rag._defaults import DEFAULT_HF_EMBED_MODEL
 
 
-def main(data_path: str, embed_model: str, db: chromadb.PersistentClient):
+def main(data_path: str, path_to_db: str, embed_model: str, db: chromadb.PersistentClient) -> None:
     collection = db.get_or_create_collection(name="documents", metadata={"hnsw:space": "cosine"})
     vector_store = ChromaVectorStore(chroma_collection=collection)
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
@@ -55,11 +53,12 @@ def main(data_path: str, embed_model: str, db: chromadb.PersistentClient):
 
     index.insert_nodes(docs, show_progress=True)
     print("Indexing done!")
-    index.storage_context.persist(persist_dir=data_path)
-    print("Persisting done!")
+    index.storage_context.persist(persist_dir=path_to_db)
+    print(f"Persisting done! Saved at {path_to_db}")
 
 
 if __name__ == "__main__":
+    print("\n**********  EMBEDDING **********\n")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--path-to-db",
@@ -71,7 +70,7 @@ if __name__ == "__main__":
         "--embedding_model_path",
         type=str,
         default=DEFAULT_HF_EMBED_MODEL,
-        help="path to locally saved sentence transformer model or Open AI HTTP endpoint",
+        help="Embedding model path",
     )
 
     parser.add_argument("--data-path", type=str, help="Path to json files with unstructured chunks")
@@ -84,18 +83,6 @@ if __name__ == "__main__":
     db = chromadb.PersistentClient(path=args.path_to_db, settings=settings)
     print("Done!")
 
-    if args.embedding_model_path.startswith("http"):
-        print(f"Using Embedding API model endpoint: {args.embedding_model_path}")
-        embed_model = OpenAIEmbedding(
-            api_base=args.embedding_model_path,
-            api_key="dummy",
-            embedding_ctx_length=512,
-            chunk_size=32,
-            tiktoken_enabled=False,
-        )
-    else:
-        print("Loading {}...".format(args.embedding_model_path))
-        embed_model = HuggingFaceEmbedding(args.embedding_model_path)
-    main(args.data_path, embed_model, db)
-    if args.output:
-        shutil.copytree(args.path_to_db)
+    print(f"Loading {args.embedding_model_path}...")
+    embed_model = HuggingFaceEmbedding(args.embedding_model_path)
+    main(args.data_path, args.path_to_db, embed_model, db)

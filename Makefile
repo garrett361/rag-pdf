@@ -2,7 +2,6 @@
 install:
 	pip install -e .
 
-
 .PHONY: fmt
 fmt:
 	ruff format rag
@@ -32,3 +31,16 @@ chunk:
 .PHONY: embed
 embed:
 	python -m rag.embed --data-path private/test/parsed --path-to-db private/test/embedded
+
+.PHONY: query
+query:
+	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
+	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
+	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct
+
+.PHONY: test
+test:
+	$(MAKE) clean
+	$(MAKE) parse
+	$(MAKE) embed
+	$(MAKE) query
