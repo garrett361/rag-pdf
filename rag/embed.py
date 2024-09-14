@@ -70,7 +70,7 @@ if __name__ == "__main__":
         "--embedding_model_path",
         type=str,
         default=DEFAULT_HF_EMBED_MODEL,
-        help="path to locally saved sentence transformer model or Open AI HTTP endpoint",
+        help="Embedding model path",
     )
 
     parser.add_argument("--data-path", type=str, help="Path to json files with unstructured chunks")
