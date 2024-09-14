@@ -7,7 +7,6 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import TextNode
 from llama_index.core.storage import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 from rag._defaults import DEFAULT_HF_EMBED_MODEL
@@ -84,16 +83,6 @@ if __name__ == "__main__":
     db = chromadb.PersistentClient(path=args.path_to_db, settings=settings)
     print("Done!")
 
-    if args.embedding_model_path.startswith("http"):
-        print(f"Using Embedding API model endpoint: {args.embedding_model_path}")
-        embed_model = OpenAIEmbedding(
-            api_base=args.embedding_model_path,
-            api_key="dummy",
-            embedding_ctx_length=512,
-            chunk_size=32,
-            tiktoken_enabled=False,
-        )
-    else:
-        print("Loading {}...".format(args.embedding_model_path))
-        embed_model = HuggingFaceEmbedding(args.embedding_model_path)
+    print(f"Loading {args.embedding_model_path}...")
+    embed_model = HuggingFaceEmbedding(args.embedding_model_path)
     main(args.data_path, args.path_to_db, embed_model, db)
