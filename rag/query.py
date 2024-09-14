@@ -12,62 +12,51 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL
 
-DEFAULT_INSTRUCTIONS = "If you don't know the answer to a question, please don't share false information. \n Limit your response to {} tokens."
 DEFAULT_SYTEM_PROMPT = """
-You are a helpful assistant. Your role is to answer questions about one
-or more document. Several passages from the documents will be provided,
-followed by a question.  Please answer the question based only on the
-information provided in the context. If the question cannot be answered based
-on the context, say that you cannot answer. Do not make up an answer.
-                       """
+You are an assistant for answering questions.
+You are given the extracted parts of a long document and a question. Provide a conversational answer.
+If you don't know the answer, just say "I do not know." Don't make up an answer.
+"""
 DEFAULT_SYTEM_PROMPT = dedent(DEFAULT_SYTEM_PROMPT).strip("\n")
 
 
 def get_llama3_1_instruct_str(
-    context_str: str, prompt: str, max_new_tokens: int, system_prompt: str = DEFAULT_SYTEM_PROMPT
+    query: str,
+    context_str: str,
+    tokenizer: PreTrainedTokenizer,
+    system_prompt: str = DEFAULT_SYTEM_PROMPT,
 ) -> str:
-    """
-    From: https://llama.meta.com/docs/model-cards-and-prompt-formats/llama3_1
-
-    dedent and strip for proper formatting: https://www.youtube.com/watch?v=ph1pfBB6kOI
-
-    Finding we still need to tab over the text to avoid unwanted whitespace.
-    """
-
-    out = f"""
-<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-{system_prompt} Be concise. Answer in fewer than {max_new_tokens} words.<|eot_id|>
-<|start_header_id|>user<|end_header_id|>
-
+    # https://huggingface.co/blog/not-lain/rag-chatbot-using-llama3
+    context_and_query = f"""
 Context information is below.
 ---------------------
 {context_str}
 ---------------------
 Given the context information and not prior knowledge, answer the query.
-Query: {prompt}
-Answer:<|eot_id|>
-<|start_header_id|>assistant<|end_header_id|>
+Query: {query}
+Answer:
     """
-    return dedent(out).strip("\n")
-
-
-def get_prompt(max_new_tokens: int) -> str:
-    return DEFAULT_INSTRUCTIONS.format(max_new_tokens)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": dedent(context_and_query).strip("\n")},
+    ]
+    return tokenizer.decode(tokenizer.apply_chat_template(messages, add_generation_prompt=True))
 
 
 def get_llm(
-    model_name: str, temp: float, max_new_tokens: int, top_p: float, use_4bit_quant: bool
+    model_name: str,
+    stopping_ids: list[int],
+    temp: float,
+    max_new_tokens: int,
+    top_p: float,
+    use_4bit_quant: bool,
 ) -> HuggingFaceLLM:
     pprint(f"Using HF model: {model_name}")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    stopping_ids = [
-        tokenizer.eos_token_id,
-    ]
     generate_kwargs = {
         "do_sample": True,
         "temperature": temp,
@@ -132,15 +121,10 @@ def create_query_engine(cutoff: float, top_k: int, filters=None):
     return query_engine
 
 
-def output_stream(llm_stream):
-    for chunk in llm_stream:
-        yield chunk.delta
-
-
 if __name__ == "__main__":
     print("\n**********  QUERYING **********\n")
     parser = argparse.ArgumentParser()
-    parser.add_argument("prompt", type=str, help="prompt to ask of the llm")
+    parser.add_argument("query", type=str, help="Query to ask of the llm")
     parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")
     parser.add_argument(
         "--embedding_model_path",
@@ -197,17 +181,29 @@ if __name__ == "__main__":
 
     index, _ = load_data(args.embedding_model_path, args.path_to_db)
     query_engine = create_query_engine(cutoff=args.cutoff, top_k=args.top_k, filters=None)
-    output = query_engine.query(args.prompt)
+    output = query_engine.query(args.query)
     context_str = ""
     for node in output.source_nodes:
         print(f"Context: {node.metadata}")
         context_str += node.text.replace("\n", "  \n")
     print(f"\nUsing {context_str=}\n")
 
-    prefix = get_llama3_1_instruct_str(context_str, args.prompt, args.max_new_tokens)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    prefix = get_llama3_1_instruct_str(args.query, context_str, tokenizer)
 
     print(f"\n{prefix=}\n")
-    llm = get_llm(args.model_name, args.temp, args.max_new_tokens, args.top_p, args.use_4bit_quant)
+
+    stopping_ids = [
+        tokenizer.eos_token_id,
+    ]
+    llm = get_llm(
+        args.model_name,
+        stopping_ids,
+        args.temp,
+        args.max_new_tokens,
+        args.top_p,
+        args.use_4bit_quant,
+    )
     output_response = llm.complete(prefix)
     print(f"\n{output_response.text=}\n")
 
