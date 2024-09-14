@@ -43,11 +43,13 @@ def get_llama3_1_instruct_str(
 {system_prompt} Be concise. Answer in fewer than {max_new_tokens} words.<|eot_id|>
 <|start_header_id|>user<|end_header_id|>
 
-The relevant context from the documents is below:
-
+Context information is below.
+---------------------
 {context_str}
-
-{prompt}<|eot_id|>
+---------------------
+Given the context information and not prior knowledge, answer the query.
+Query: {prompt}
+Answer:<|eot_id|>
 <|start_header_id|>assistant<|end_header_id|>
     """
     return dedent(out).strip("\n")
@@ -199,17 +201,15 @@ if __name__ == "__main__":
     context_str = ""
     for node in output.source_nodes:
         print(f"Context: {node.metadata}")
-        new_text = node.text.replace("\n", "  \n")
-        print(f"\n{new_text=}\n")
-        context_str += new_text
-    print(f"Using {context_str=}")
+        context_str += node.text.replace("\n", "  \n")
+    print(f"\nUsing {context_str=}\n")
 
     prefix = get_llama3_1_instruct_str(context_str, args.prompt, args.max_new_tokens)
 
     print(f"\n{prefix=}\n")
     llm = get_llm(args.model_name, args.temp, args.max_new_tokens, args.top_p, args.use_4bit_quant)
     output_response = llm.complete(prefix)
-    pprint(f"{output_response.text=}")
+    print(f"\n{output_response.text=}\n")
 
     print("\n **** REFERENCES **** \n")
     references = output.source_nodes
