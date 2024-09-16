@@ -20,27 +20,27 @@ clean:
 	find . \( -name __pycache__ -o -name \*.pyc \) -delete
 	rm -rf private/test/*
 
-.PHONY: parse
-parse:
+.PHONY: test-parse
+test-parse:
 	python -m rag.parse --input private/RFQ_Commercial/NZT --output private/test/parsed --chunking_strategy "by_title"
 
-.PHONY: chunk
-chunk:
+.PHONY: test-chunk
+test-chunk:
 	python -m pdb -m rag.chunk --input private/test/parsed --output private/test/chunked
 
-.PHONY: embed
-embed:
+.PHONY: test-embed
+test-embed:
 	python -m rag.embed --data-path private/test/parsed --path-to-db private/test/embedded
 
-.PHONY: query
-query:
+.PHONY: test-query
+test-query:
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
-	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct
+	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 10 --top-k-reranker 3
 
 .PHONY: test
 test:
 	$(MAKE) clean
-	$(MAKE) parse
-	$(MAKE) embed
-	$(MAKE) query
+	$(MAKE) test-parse
+	$(MAKE) test-embed
+	$(MAKE) test-query
