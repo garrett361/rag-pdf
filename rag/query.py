@@ -5,23 +5,17 @@ from textwrap import dedent
 import chromadb
 import torch
 from llama_index.core import VectorStoreIndex, get_response_synthesizer
-from llama_index.core.postprocessor import SimilarityPostprocessor
+from llama_index.core.postprocessor import LLMRerank, SimilarityPostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.schema import QueryBundle
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL
-
-DEFAULT_SYTEM_PROMPT = """
-You are an assistant for answering questions.
-You are given the extracted parts of a long document and a question. Provide a conversational answer.
-If you don't know the answer, just say "I do not know." Don't make up an answer.
-"""
-DEFAULT_SYTEM_PROMPT = dedent(DEFAULT_SYTEM_PROMPT).strip("\n")
+from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_SYTEM_PROMPT
 
 
 def get_llama3_1_instruct_str(
@@ -109,6 +103,14 @@ def load_data(
     return index, chroma_collection.get()
 
 
+DEFAULT_SYTEM_PROMPT = """
+You are an assistant for answering questions.
+You are given the extracted parts of a long document and a question. Provide a conversational answer.
+If you don't know the answer, just say "I do not know." Don't make up an answer.
+"""
+DEFAULT_SYTEM_PROMPT = dedent(DEFAULT_SYTEM_PROMPT).strip("\n")
+
+
 def create_query_engine(cutoff: float, top_k: int, filters=None):
     retriever = VectorIndexRetriever(index=index, similarity_top_k=top_k, filters=filters)
     # "no_text": just return the retrieved nodes without LLM processing
@@ -181,9 +183,14 @@ if __name__ == "__main__":
 
     index, _ = load_data(args.embedding_model_path, args.path_to_db)
     query_engine = create_query_engine(cutoff=args.cutoff, top_k=args.top_k, filters=None)
-    output = query_engine.query(args.query)
+    # Wrap in a QueryBundle class in order to use reranker.
+    query = QueryBundle(args.query)
+    retrieved_nodes = query_engine.query(query).source_nodes
+
+    reranker = LLMRerank(top_n=args.top_k)
+
     context_str = ""
-    for node in output.source_nodes:
+    for node in retrieved_nodes:
         print(f"Context: {node.metadata}")
         context_str += node.text.replace("\n", "  \n")
     print(f"\nUsing {context_str=}\n")
@@ -208,15 +215,14 @@ if __name__ == "__main__":
     print(f"\n{output_response.text=}\n")
 
     print("\n **** REFERENCES **** \n")
-    references = output.source_nodes
-    for i in range(len(references)):
-        title = references[i].node.metadata["Source"]
-        page = references[i].node.metadata["Page Number"]
-        text = references[i].node.text
-        commit = references[i].node.metadata["Commit"]
-        doctag = references[i].node.metadata["Tag"]
+    for i in range(len(retrieved_nodes)):
+        title = retrieved_nodes[i].node.metadata["Source"]
+        page = retrieved_nodes[i].node.metadata["Page Number"]
+        text = retrieved_nodes[i].node.text
+        commit = retrieved_nodes[i].node.metadata["Commit"]
+        doctag = retrieved_nodes[i].node.metadata["Tag"]
         newtext = text.encode("unicode_escape").decode("unicode_escape")
-        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((references[i].score * 100),3)}% \n"
+        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((retrieved_nodes[i].score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
         title = title.replace(" ", "%20")
 
