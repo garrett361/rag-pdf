@@ -1,6 +1,6 @@
 from textwrap import dedent
 
-DEFAULT_HF_EMBED_MODEL = "BAAI/bge-base-en-v1.5"
+DEFAULT_HF_EMBED_MODEL = "BAAI/bge-large-en-v1.5"
 DEFAULT_HF_CHAT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 DEFAULT_CHUNK_STRAT = "by_title"
 DEFAULT_HF_CHAT_TEMPLATE = "\n<|user|>:{}</s>\n<|assistant|>:"
