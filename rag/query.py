@@ -32,13 +32,13 @@ def get_llama3_1_instruct_str(
 
     # https://huggingface.co/blog/not-lain/rag-chatbot-using-llama3
     context_and_query = f"""
-    Context information is below.
-    ---------------------
-    {context_str}
-    ---------------------
-    Given the context information and not prior knowledge, answer the query.
-    Query: {query}
-    Answer:
+Context information is below.
+---------------------
+{context_str}
+---------------------
+Given the context information and not prior knowledge, answer the query.
+Query: {query}
+Answer:
     """
     messages = [
         {"role": "system", "content": system_prompt},
