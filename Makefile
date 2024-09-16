@@ -20,19 +20,19 @@ clean:
 	find . \( -name __pycache__ -o -name \*.pyc \) -delete
 	rm -rf private/test/*
 
-.PHONY: parse
+.PHONY: test-parse
 parse:
 	python -m rag.parse --input private/RFQ_Commercial/NZT --output private/test/parsed --chunking_strategy "by_title"
 
-.PHONY: chunk
+.PHONY: test-chunk
 chunk:
 	python -m pdb -m rag.chunk --input private/test/parsed --output private/test/chunked
 
-.PHONY: embed
+.PHONY: test-embed
 embed:
 	python -m rag.embed --data-path private/test/parsed --path-to-db private/test/embedded
 
-.PHONY: query
+.PHONY: test-query
 query:
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
