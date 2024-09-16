@@ -1,14 +1,14 @@
 import argparse
 from pprint import pprint
 from textwrap import dedent
+from typing import Optional
 
 import chromadb
 import torch
-from llama_index.core import VectorStoreIndex, get_response_synthesizer
+from llama_index.core import VectorStoreIndex
 from llama_index.core.postprocessor import LLMRerank, SimilarityPostprocessor
-from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.schema import QueryBundle
+from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
@@ -20,19 +20,25 @@ from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT
 
 def get_llama3_1_instruct_str(
     query: str,
-    context_str: str,
+    nodes: list[NodeWithScore],
     tokenizer: PreTrainedTokenizer,
     system_prompt: str = DEFAULT_SYTEM_PROMPT,
 ) -> str:
+    context_str = ""
+    for node in nodes:
+        print(f"Context: {node.metadata}")
+        context_str += node.text.replace("\n", "  \n")
+    print(f"\nUsing {context_str=}\n")
+
     # https://huggingface.co/blog/not-lain/rag-chatbot-using-llama3
     context_and_query = f"""
-Context information is below.
----------------------
-{context_str}
----------------------
-Given the context information and not prior knowledge, answer the query.
-Query: {query}
-Answer:
+    Context information is below.
+    ---------------------
+    {context_str}
+    ---------------------
+    Given the context information and not prior knowledge, answer the query.
+    Query: {query}
+    Answer:
     """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -43,7 +49,7 @@ Answer:
 
 def get_llm(
     model_name: str,
-    stopping_ids: list[int],
+    tokenizer: PreTrainedTokenizer,
     temp: float,
     max_new_tokens: int,
     top_p: float,
@@ -77,7 +83,7 @@ def get_llm(
         tokenizer_name=model_name,
         generate_kwargs=generate_kwargs,
         max_new_tokens=max_new_tokens,
-        stopping_ids=stopping_ids,
+        stopping_ids=[tokenizer.eos_token_id],
         model_kwargs=model_kwargs,
     )
     pprint(f"Loaded model {model_name}")
@@ -103,24 +109,29 @@ def load_data(
     return index, chroma_collection.get()
 
 
-DEFAULT_SYTEM_PROMPT = """
-You are an assistant for answering questions.
-You are given the extracted parts of a long document and a question. Provide a conversational answer.
-If you don't know the answer, just say "I do not know." Don't make up an answer.
-"""
-DEFAULT_SYTEM_PROMPT = dedent(DEFAULT_SYTEM_PROMPT).strip("\n")
-
-
-def create_query_engine(cutoff: float, top_k: int, filters=None):
-    retriever = VectorIndexRetriever(index=index, similarity_top_k=top_k, filters=filters)
-    # "no_text": just return the retrieved nodes without LLM processing
-    response_synthesizer = get_response_synthesizer(response_mode="no_text", streaming=False)
-    query_engine = RetrieverQueryEngine.from_args(
-        retriever=retriever,
-        response_synthesizer=response_synthesizer,
+def create_retriever(cutoff: float, top_k_retriever: int, filters=None) -> VectorIndexRetriever:
+    retriever = VectorIndexRetriever(
+        index=index,
+        similarity_top_k=top_k_retriever,
+        filters=filters,
         node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
     )
-    return query_engine
+    return retriever
+
+
+def get_nodes(
+    query: str, retriever: VectorIndexRetriever, reranker: Optional[LLMRerank] = None
+) -> list[NodeWithScore]:
+    """
+    Retrieve the most relevant chunks, given the query.
+    """
+    # Wrap in a QueryBundle class in order to use reranker.
+    query_bundle = QueryBundle(query)
+    nodes = retriever.retrieve(query_bundle)
+
+    if reranker is not None:
+        nodes = reranker.postprocess_nodes(nodes, query_bundle)
+    return nodes
 
 
 if __name__ == "__main__":
@@ -140,10 +151,16 @@ if __name__ == "__main__":
         help="local path or URL to chat model",
     )
     parser.add_argument(
-        "--top-k",
+        "--top-k-retriever",
         default=5,
         type=int,
         help="top k results for retriever",
+    )
+    parser.add_argument(
+        "--top-k-reranker",
+        default=None,
+        type=int,
+        help="top k results for reranker",
     )
     parser.add_argument(
         "--temp",
@@ -153,7 +170,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--top-p",
-        default=None,
+        default=0.9,
         type=float,
         help="top p probability for generation",
     )
@@ -180,32 +197,30 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
+    if "Meta-Llama-3.1" not in args.model_name:
+        # Only tested with Meta-Llama-3.1 so far. The system prompt and tokenization would need to
+        # be adjusted for other models.
+        raise ValueError(f"Script expects a Llama-3.1 model, not {args.model_name}")
+
+    if args.top_k_reranker and args.top_k_reranker > args.top_k_retriever:
+        raise ValueError("top_k_reranker, if provided, must be smaller than top_k_retriever.")
 
     index, _ = load_data(args.embedding_model_path, args.path_to_db)
-    query_engine = create_query_engine(cutoff=args.cutoff, top_k=args.top_k, filters=None)
-    # Wrap in a QueryBundle class in order to use reranker.
-    query = QueryBundle(args.query)
-    retrieved_nodes = query_engine.query(query).source_nodes
+    retriever = create_retriever(
+        cutoff=args.cutoff, top_k_retriever=args.top_k_retriever, filters=None
+    )
+    reranker = LLMRerank(top_n=args.top_k_reranker) if args.top_k_reranker else None
 
-    reranker = LLMRerank(top_n=args.top_k)
-
-    context_str = ""
-    for node in retrieved_nodes:
-        print(f"Context: {node.metadata}")
-        context_str += node.text.replace("\n", "  \n")
-    print(f"\nUsing {context_str=}\n")
-
+    nodes = get_nodes(args.query, retriever, reranker)
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    prefix = get_llama3_1_instruct_str(args.query, context_str, tokenizer)
+
+    prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
 
     print(f"\n{prefix=}\n")
 
-    stopping_ids = [
-        tokenizer.eos_token_id,
-    ]
     llm = get_llm(
         args.model_name,
-        stopping_ids,
+        tokenizer,
         args.temp,
         args.max_new_tokens,
         args.top_p,
@@ -214,15 +229,16 @@ if __name__ == "__main__":
     output_response = llm.complete(prefix)
     print(f"\n{output_response.text=}\n")
 
+    # TODO: @garrett.goon - Delete below, just for debugging/visuals
     print("\n **** REFERENCES **** \n")
-    for i in range(len(retrieved_nodes)):
-        title = retrieved_nodes[i].node.metadata["Source"]
-        page = retrieved_nodes[i].node.metadata["Page Number"]
-        text = retrieved_nodes[i].node.text
-        commit = retrieved_nodes[i].node.metadata["Commit"]
-        doctag = retrieved_nodes[i].node.metadata["Tag"]
+    for i in range(len(nodes)):
+        title = nodes[i].node.metadata["Source"]
+        page = nodes[i].node.metadata["Page Number"]
+        text = nodes[i].node.text
+        commit = nodes[i].node.metadata["Commit"]
+        doctag = nodes[i].node.metadata["Tag"]
         newtext = text.encode("unicode_escape").decode("unicode_escape")
-        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((retrieved_nodes[i].score * 100),3)}% \n"
+        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((nodes[i].score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
         title = title.replace(" ", "%20")
 
