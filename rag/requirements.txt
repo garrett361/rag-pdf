@@ -11,4 +11,7 @@ torch==2.4.1
 transformers==4.44.2
 unstructured[all-docs]
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5b0f67b (update minimal rag reqs)
