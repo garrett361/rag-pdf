@@ -231,15 +231,15 @@ if __name__ == "__main__":
 
     # TODO: @garrett.goon - Delete below, just for debugging/visuals
     print("\n **** REFERENCES **** \n")
-    for i in range(len(nodes)):
-        title = nodes[i].node.metadata["Source"]
-        page = nodes[i].node.metadata["Page Number"]
-        text = nodes[i].node.text
-        commit = nodes[i].node.metadata["Commit"]
-        doctag = nodes[i].node.metadata["Tag"]
+    for n in nodes:
+        title = n.node.metadata["Source"]
+        page = n.node.metadata["Page Number"]
+        text = n.node.text
+        commit = n.node.metadata["Commit"]
+        doctag = n.node.metadata["Tag"]
         newtext = text.encode("unicode_escape").decode("unicode_escape")
-        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((nodes[i].score * 100),3)}% \n"
+        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((n.score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
-        title = title.replace(" ", "%20")
 
-        pprint(f"{out_title=}")
+        print(f"\n{out_title=}")
+        print(f"{out_text=}\n")
