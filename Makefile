@@ -22,7 +22,7 @@ clean:
 
 .PHONY: test-parse
 test-parse:
-	python -m rag.parse --input private/RFQ_Commercial/NZT --output private/test/parsed --chunking_strategy "by_title"
+	python -m rag.parse --input private/RFQ_Commercial/Petrobras --output private/test/parsed --chunking_strategy "by_title"
 
 .PHONY: test-chunk
 test-chunk:
@@ -36,12 +36,11 @@ test-embed:
 test-query:
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
-	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded \
-		--model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 10 --top-k-reranker 3
+	python -m rag.query "What is the plant location?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 10 --top-k-reranker 3
 
 .PHONY: test
 test:
 	$(MAKE) clean
-	$(MAKE) parse
-	$(MAKE) embed
-	$(MAKE) query
+	$(MAKE) test-parse
+	$(MAKE) test-embed
+	$(MAKE) test-query
