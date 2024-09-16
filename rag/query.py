@@ -44,7 +44,9 @@ def get_llama3_1_instruct_str(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": dedent(context_and_query).strip("\n")},
     ]
-    return tokenizer.decode(tokenizer.apply_chat_template(messages, add_generation_prompt=True))
+    toks = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+    print(f"Prefix: {len(toks)=}")
+    return tokenizer.decode(toks)
 
 
 def get_llm(
