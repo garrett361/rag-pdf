@@ -37,8 +37,8 @@ For query:
 
 - Parse folder with docs and write chunks into `json` file via `python3 -m rag.parse --input <path-to-docs-dir>
 --output <path-to-parse-output-dir>`
-- Chunk (not sure this is necessary? `rag.parse` actually does chunking already and `rag.embed` uses `rag.parse` outputs.) `python3 -m rag.chunk --input <path-to-parse-output-dir> --output <path-to-chunks-dir>`
-- Embed
+- Embed the parsed & chunked docs: `python -m rag.embed --data-path <path-to-parse-output-dir> --path-to-db <path-to-db>`
+- Query: `python -m rag.query "What is the name of the project?" --path-to-db <path-to-db> --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 10 --top-k-reranker 3`
 
   -------------- ORIGINAL README BELOW --------------
 

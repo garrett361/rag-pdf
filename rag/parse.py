@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 import torch
 from loguru import logger
@@ -47,9 +48,9 @@ def parse(
     output,
     strategy,
     chunking_strategy: str,
-    combine_text_under_n_chars: int,
-    max_characters: int,
-    new_after_n_chars: int,
+    combine_text_under_n_chars: Optional[int] = None,
+    max_characters: Optional[int] = None,
+    new_after_n_chars: Optional[int] = None,
     tag=None,
 ) -> None:
     logger.info(f"Processing {input_file}")
@@ -122,9 +123,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--chunking_strategy", default=DEFAULT_CHUNK_STRAT, help="chunking strategy"
     )
-    parser.add_argument("--combine_text_under_n_chars", default=50, help="unstructured setting")
-    parser.add_argument("--max_characters", default=750, help="unstructured setting")
-    parser.add_argument("--new_after_n_chars", default=500, help="unstructured setting")
+    parser.add_argument(
+        "--combine_text_under_n_chars", default=None, type=int, help="unstructured setting"
+    )
+    parser.add_argument("--max_characters", default=None, type=int, help="unstructured setting")
+    parser.add_argument("--new_after_n_chars", default=None, type=int, help="unstructured setting")
     parser.add_argument(
         "--folder_tags",
         action="store_true",
