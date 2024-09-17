@@ -32,7 +32,7 @@ test-embed:
 test-query:
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
-	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 10 --top-k-reranker 3
+	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5
 
 .PHONY: test
 test:
