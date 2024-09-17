@@ -57,7 +57,7 @@ def get_local_llm(
     use_4bit_quant: bool,
     generate_kwargs: dict,
 ) -> HuggingFaceLLM:
-    pprint(f"Using HF model: {model_name}")
+    print(f"Using HF model: {model_name}")
 
     model_kwargs = {"torch_dtype": torch.bfloat16}
     if use_4bit_quant:
@@ -91,10 +91,10 @@ def load_data(
     embedding_model_path: str, path_to_db: str
 ) -> tuple[VectorStoreIndex, chromadb.GetResult]:
     if embedding_model_path.startswith("http"):
-        pprint(f"Using Embedding API model endpoint: {embedding_model_path}")
+        print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
     else:
-        pprint(f"Embedding model: {embedding_model_path}")
+        print(f"\nEmbedding model: {embedding_model_path}\n")
         embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
     chroma_client = chromadb.PersistentClient(path_to_db)
     chroma_collection = chroma_client.get_collection(name="documents")
