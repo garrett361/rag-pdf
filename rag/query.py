@@ -12,7 +12,7 @@ from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
-from llama_index.llms.openllm import OpenLLMAPI
+from llama_index.llms.openllm import OpenLLM
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
@@ -50,21 +50,15 @@ Answer:
     return tokenizer.decode(toks)
 
 
-def get_llm(
+def get_local_llm(
     model_name: str,
     tokenizer: PreTrainedTokenizer,
-    temp: float,
     max_new_tokens: int,
-    top_p: float,
     use_4bit_quant: bool,
+    generate_kwargs: dict,
 ) -> HuggingFaceLLM:
     pprint(f"Using HF model: {model_name}")
 
-    generate_kwargs = {
-        "do_sample": True,
-        "temperature": temp,
-        "top_p": top_p,
-    }
     model_kwargs = {"torch_dtype": torch.bfloat16}
     if use_4bit_quant:
         if not torch.cuda.is_available():
@@ -81,17 +75,14 @@ def get_llm(
         }
     else:
         model_kwargs = {"torch_dtype": torch.bfloat16}
-    if model_name.startswith("http"):
-        llm = OpenLLMAPI(address=model_name, generate_kwargs=generate_kwargs)
-    else:
-        llm = HuggingFaceLLM(
-            model_name=model_name,
-            tokenizer_name=model_name,
-            generate_kwargs=generate_kwargs,
-            max_new_tokens=max_new_tokens,
-            stopping_ids=[tokenizer.eos_token_id],
-            model_kwargs=model_kwargs,
-        )
+    llm = HuggingFaceLLM(
+        model_name=model_name,
+        tokenizer_name=model_name,
+        generate_kwargs=generate_kwargs,
+        max_new_tokens=max_new_tokens,
+        stopping_ids=[tokenizer.eos_token_id],
+        model_kwargs=model_kwargs,
+    )
     pprint(f"Loaded model {model_name}")
     return llm
 
@@ -155,6 +146,12 @@ if __name__ == "__main__":
         "--model-name",
         default=DEFAULT_HF_CHAT_MODEL,
         help="local path or URL to chat model",
+    )
+    parser.add_argument(
+        "--chat-model-endpoint",
+        default=None,
+        type=str,
+        help="HTTP path to model endpoint, if serving",
     )
     parser.add_argument(
         "--top-k-retriever",
@@ -223,15 +220,21 @@ if __name__ == "__main__":
     prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
 
     print(f"\n{prefix=}\n")
-
-    llm = get_llm(
-        args.model_name,
-        tokenizer,
-        args.temp,
-        args.max_new_tokens,
-        args.top_p,
-        args.use_4bit_quant,
-    )
+    generate_kwargs = {
+        "do_sample": True,
+        "temperature": args.temp,
+        "top_p": args.top_p,
+    }
+    if args.chat_model_endpoint:
+        llm = OpenLLM(
+            address=args.chat_model_endpoint,
+            generate_kwargs=generate_kwargs,
+            max_tokens=args.max_new_tokens,
+        )
+    else:
+        llm = get_local_llm(
+            args.model_name, tokenizer, args.max_new_tokens, args.use_4bit_quant, generate_kwargs
+        )
     output_response = llm.complete(prefix)
     print(f"\n{output_response.text=}\n")
 
