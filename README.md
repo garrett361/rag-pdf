@@ -17,6 +17,9 @@ parse a test pdf in `RFQ_Commercial` and then `make test-embed` to embed the par
 vector db. Use `make test-query` to test querying a local LLM and `make test-query-hosted` to test
 the hosted endpoint path. Append `QUERY=<your new query here>` to change the test query.
 
+Run `make test` to run the entire `{parse,embed,query}` workflow from start to finish, and similar
+for `make test-embed` to run the version with hosted model endpoints.
+
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
 `rag/requirements.txt` is the one I have in my `venv` while developing, built from installing parts
 of the other `requirements.txt` instances on top of each other.
