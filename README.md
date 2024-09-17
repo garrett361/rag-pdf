@@ -13,9 +13,12 @@ For ease of development, I am cannibalizing parts of the original code and putti
 
 I copied the `RFQ_Commercial` dir under `private/RFQ_Commercial` which is `.gitignore`-d. This is
 only referenced in the `Makefile` which has some convenience commands. E.g. run `make test-parse` to
-parse a test pdf in `RFQ_Commercial` and then `make test-embed` to embed the parsed results into a vector
-db. Use `make test-embed-hosted` to test the hosted endpoint path. Append `QUERY=<your new query
-here>` to change the test query.
+parse a test pdf in `RFQ_Commercial` and then `make test-embed` to embed the parsed results into a
+vector db. Use `make test-query` to test querying a local LLM and `make test-query-hosted` to test
+the hosted endpoint path. Append `QUERY=<your new query here>` to change the test query.
+
+Run `make test` to run the entire `{parse,embed,query}` workflow from start to finish, and similar
+for `make test-embed` to run the version with hosted model endpoints.
 
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
 `rag/requirements.txt` is the one I have in my `venv` while developing, built from installing parts
