@@ -24,7 +24,7 @@ clean:
 
 .PHONY: test-parse
 test-parse:
-	python -m rag.parse --input private/RFQ_Commercial/NZT --output private/test/parsed --chunking_strategy "by_title"
+	python -m rag.parse --input private/RFQ_Commercial/NZT --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars 50 --max_characters 750 --new_after_n_chars 500
 
 .PHONY: test-embed
 test-embed:
@@ -48,3 +48,10 @@ test:
 	$(MAKE) test-parse
 	$(MAKE) test-embed
 	$(MAKE) test-query
+
+.PHONY: test-hosted
+test-hosted:
+	$(MAKE) clean
+	$(MAKE) test-parse
+	$(MAKE) test-embed
+	$(MAKE) test-query-hosted
