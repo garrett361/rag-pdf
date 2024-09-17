@@ -14,7 +14,8 @@ For ease of development, I am cannibalizing parts of the original code and putti
 I copied the `RFQ_Commercial` dir under `private/RFQ_Commercial` which is `.gitignore`-d. This is
 only referenced in the `Makefile` which has some convenience commands. E.g. run `make test-parse` to
 parse a test pdf in `RFQ_Commercial` and then `make test-embed` to embed the parsed results into a vector
-db.
+db. Use `make test-embed-hosted` to test the hosted endpoint path. Append `QUERY=<your new query
+here>` to change the test query.
 
 There are also multiple `requirements.txt`'s floating in various parts of the repo. The top-level
 `rag/requirements.txt` is the one I have in my `venv` while developing, built from installing parts
@@ -38,7 +39,8 @@ For query:
 - Parse folder with docs and write chunks into `json` file via `python3 -m rag.parse --input <path-to-docs-dir>
 --output <path-to-parse-output-dir>`
 - Embed the parsed & chunked docs: `python -m rag.embed --data-path <path-to-parse-output-dir> --path-to-db <path-to-db>`
-- Query: `python -m rag.query "What is the name of the project?" --path-to-db <path-to-db> --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 10 --top-k-reranker 3`
+- Query using locally hosted LLM: `python -m rag.query "What is the name of the project?" --path-to-db <path-to-db> --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5`
+- Query using endpoint-hosted embedding model and LLM: `python -m rag.query "What is the name of the project?" --path-to-db <path-to-db> --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1/ --embedding_model_path http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1`
 
   -------------- ORIGINAL README BELOW --------------
 

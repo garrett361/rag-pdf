@@ -1,3 +1,5 @@
+QUERY = "What is the name of the project? Please respond in JSON format."
+
 .PHONY: install
 install:
 	pip install -e .
@@ -32,13 +34,13 @@ test-embed:
 test-query:
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
-	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5
+	python -m rag.query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5
 
 .PHONY: test-query-hosted
 test-query-hosted:
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded
 	# python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Llama-2-7b-chat-hf
-	python -m rag.query "What is the name of the project?" --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1/ --embedding_model_path http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1
+	python -m rag.query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1/ --embedding_model_path http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1
 
 .PHONY: test
 test:
