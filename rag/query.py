@@ -226,6 +226,7 @@ if __name__ == "__main__":
         "top_p": args.top_p,
     }
     if args.chat_model_endpoint:
+        print(f"\nUsing hosted LLM at: {args.chat_model_endpoint}\n")
         llm = OpenLLM(
             model=args.model_name,
             api_base=args.chat_model_endpoint,
@@ -234,6 +235,7 @@ if __name__ == "__main__":
             max_tokens=args.max_new_tokens,
         )
     else:
+        print(f"\nUsing local {args.model_name} LLM\n")
         llm = get_local_llm(
             args.model_name, tokenizer, args.max_new_tokens, args.use_4bit_quant, generate_kwargs
         )
