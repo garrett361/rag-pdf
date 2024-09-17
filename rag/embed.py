@@ -7,9 +7,10 @@ from llama_index.core import VectorStoreIndex
 from llama_index.core.schema import TextNode
 from llama_index.core.storage import StorageContext
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from rag._defaults import DEFAULT_HF_EMBED_MODEL
+from rag._defaults import DEFAULT_HF_EMBED_MODEL, DEFAULT_MAX_EMBED_BSZ
 
 
 def main(data_path: str, path_to_db: str, embed_model: str, db: chromadb.PersistentClient) -> None:
@@ -18,7 +19,12 @@ def main(data_path: str, path_to_db: str, embed_model: str, db: chromadb.Persist
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
     docs = []
-    index = VectorStoreIndex(docs, storage_context=storage_context, embed_model=embed_model)
+    index = VectorStoreIndex(
+        docs,
+        storage_context=storage_context,
+        embed_model=embed_model,
+        insert_batch_size=DEFAULT_MAX_EMBED_BSZ,
+    )
     for dirpath, _, files in os.walk(data_path):
         for file in files:
             input_file = os.path.join(dirpath, file)
@@ -83,6 +89,10 @@ if __name__ == "__main__":
     db = chromadb.PersistentClient(path=args.path_to_db, settings=settings)
     print("Done!")
 
-    print(f"Loading {args.embedding_model_path}...")
-    embed_model = HuggingFaceEmbedding(args.embedding_model_path)
+    if args.embedding_model_path.startswith("http"):
+        print(f"\nUsing Embedding API model endpoint: {args.embedding_model_path}\n")
+        embed_model = OpenAIEmbedding(api_base=args.embedding_model_path, api_key="dummy")
+    else:
+        print(f"\nUsing local Embedding model: {args.embedding_model_path}\n")
+        embed_model = HuggingFaceEmbedding(model_name=args.embedding_model_path)
     main(args.data_path, args.path_to_db, embed_model, db)
