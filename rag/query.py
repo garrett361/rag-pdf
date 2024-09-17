@@ -12,6 +12,7 @@ from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
+from llama_index.llms.openllm import OpenLLMAPI
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
@@ -80,14 +81,17 @@ def get_llm(
         }
     else:
         model_kwargs = {"torch_dtype": torch.bfloat16}
-    llm = HuggingFaceLLM(
-        model_name=model_name,
-        tokenizer_name=model_name,
-        generate_kwargs=generate_kwargs,
-        max_new_tokens=max_new_tokens,
-        stopping_ids=[tokenizer.eos_token_id],
-        model_kwargs=model_kwargs,
-    )
+    if model_name.startswith("http"):
+        llm = OpenLLMAPI(address=model_name, generate_kwargs=generate_kwargs)
+    else:
+        llm = HuggingFaceLLM(
+            model_name=model_name,
+            tokenizer_name=model_name,
+            generate_kwargs=generate_kwargs,
+            max_new_tokens=max_new_tokens,
+            stopping_ids=[tokenizer.eos_token_id],
+            model_kwargs=model_kwargs,
+        )
     pprint(f"Loaded model {model_name}")
     return llm
 
