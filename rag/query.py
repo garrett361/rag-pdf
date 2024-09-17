@@ -227,7 +227,8 @@ if __name__ == "__main__":
     }
     if args.chat_model_endpoint:
         llm = OpenLLM(
-            address=args.chat_model_endpoint,
+            api_base=args.chat_model_endpoint,
+            api_key="fake",
             generate_kwargs=generate_kwargs,
             max_tokens=args.max_new_tokens,
         )
