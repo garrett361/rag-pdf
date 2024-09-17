@@ -43,7 +43,7 @@ test-query:
 
 .PHONY: test-query-hosted
 test-query-hosted:
-	python -m rag.query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint {$HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED}
+	python -m rag.query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED}
 
 .PHONY: test
 test:
@@ -56,5 +56,5 @@ test:
 test-hosted:
 	$(MAKE) clean
 	$(MAKE) test-parse
-	$(MAKE) test-embed
+	$(MAKE) test-embed-hosted
 	$(MAKE) test-query-hosted
