@@ -12,6 +12,7 @@ from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
+from llama_index.llms.openllm import OpenLLM
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
@@ -32,36 +33,32 @@ def get_llama3_1_instruct_str(
 
     # https://huggingface.co/blog/not-lain/rag-chatbot-using-llama3
     context_and_query = f"""
-    Context information is below.
-    ---------------------
-    {context_str}
-    ---------------------
-    Given the context information and not prior knowledge, answer the query.
-    Query: {query}
-    Answer:
+Context information is below.
+---------------------
+{context_str}
+---------------------
+Given the context information and not prior knowledge, answer the query.
+Query: {query}
+Answer:
     """
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": dedent(context_and_query).strip("\n")},
     ]
-    return tokenizer.decode(tokenizer.apply_chat_template(messages, add_generation_prompt=True))
+    toks = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
+    print(f"Prefix: {len(toks)=}")
+    return tokenizer.decode(toks)
 
 
-def get_llm(
+def get_local_llm(
     model_name: str,
     tokenizer: PreTrainedTokenizer,
-    temp: float,
     max_new_tokens: int,
-    top_p: float,
     use_4bit_quant: bool,
+    generate_kwargs: dict,
 ) -> HuggingFaceLLM:
-    pprint(f"Using HF model: {model_name}")
+    print(f"Using HF model: {model_name}")
 
-    generate_kwargs = {
-        "do_sample": True,
-        "temperature": temp,
-        "top_p": top_p,
-    }
     model_kwargs = {"torch_dtype": torch.bfloat16}
     if use_4bit_quant:
         if not torch.cuda.is_available():
@@ -94,10 +91,10 @@ def load_data(
     embedding_model_path: str, path_to_db: str
 ) -> tuple[VectorStoreIndex, chromadb.GetResult]:
     if embedding_model_path.startswith("http"):
-        pprint(f"Using Embedding API model endpoint: {embedding_model_path}")
+        print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
     else:
-        pprint(f"Embedding model: {embedding_model_path}")
+        print(f"\nEmbedding model: {embedding_model_path}\n")
         embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
     chroma_client = chromadb.PersistentClient(path_to_db)
     chroma_collection = chroma_client.get_collection(name="documents")
@@ -149,6 +146,12 @@ if __name__ == "__main__":
         "--model-name",
         default=DEFAULT_HF_CHAT_MODEL,
         help="local path or URL to chat model",
+    )
+    parser.add_argument(
+        "--chat-model-endpoint",
+        default=None,
+        type=str,
+        help="HTTP path to model endpoint, if serving",
     )
     parser.add_argument(
         "--top-k-retriever",
@@ -217,15 +220,25 @@ if __name__ == "__main__":
     prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
 
     print(f"\n{prefix=}\n")
-
-    llm = get_llm(
-        args.model_name,
-        tokenizer,
-        args.temp,
-        args.max_new_tokens,
-        args.top_p,
-        args.use_4bit_quant,
-    )
+    generate_kwargs = {
+        "do_sample": True,
+        "temperature": args.temp,
+        "top_p": args.top_p,
+    }
+    if args.chat_model_endpoint:
+        print(f"\nUsing hosted LLM at: {args.chat_model_endpoint}\n")
+        llm = OpenLLM(
+            model=args.model_name,
+            api_base=args.chat_model_endpoint,
+            api_key="fake",
+            generate_kwargs=generate_kwargs,
+            max_tokens=args.max_new_tokens,
+        )
+    else:
+        print(f"\nUsing local {args.model_name} LLM\n")
+        llm = get_local_llm(
+            args.model_name, tokenizer, args.max_new_tokens, args.use_4bit_quant, generate_kwargs
+        )
     output_response = llm.complete(prefix)
     print(f"\n{output_response.text=}\n")
 
