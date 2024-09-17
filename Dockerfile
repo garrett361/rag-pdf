@@ -1,13 +1,8 @@
-FROM python:3.10
+FROM garrettgoon/rag-pdf-base
 
-WORKDIR /app
+COPY . .
 
-RUN apt-get update && apt-get install -y tesseract-ocr libtesseract-dev ffmpeg libsm6 libxext6 libmagic-dev libpoppler-dev poppler-utils
+RUN pip install -r rag/requirements.txt --no-cache-dir
 
-COPY rag/requirements.txt ./
+RUN make install
 
-RUN pip install -r requirements.txt
-
-COPY rag/ .
-
-CMD ["python", "parsing.py"]
