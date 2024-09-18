@@ -9,6 +9,7 @@ from loguru import logger
 from unstructured.partition.auto import partition
 
 from rag._defaults import DEFAULT_CHUNK_STRAT
+from rag._utils import get_tag_from_dir
 from rag.rag_schema import DataElement, DataType, Document, Metadata
 
 
@@ -87,12 +88,7 @@ def main(
     new_after_n_chars: int,
     folder_tags: bool = False,
 ) -> None:
-    input_path = Path(input)
-    if input_path.is_file():
-        raise ValueError("input expected to be a directory, not a file")
-    # Use the last directory as the tag for all docs, if using folder_tags
-    tag = input_path.parts[-1] if folder_tags else None
-    print(f"{tag=}")
+    tag = get_tag_from_dir(input) if folder_tags else None
     for dirpath, _, files in os.walk(input):
         for file in files:
             input_file = os.path.join(dirpath, file)

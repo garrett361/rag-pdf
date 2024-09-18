@@ -20,6 +20,7 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_SYTEM_PROMPT
+from rag._utils import get_tag_from_dir
 
 
 def get_llama3_1_instruct_str(
@@ -140,7 +141,7 @@ def get_llm_answer(llm, tag, args, query_list=None):
         filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
     elif args.folder:
         filters = MetadataFilters(
-            filters=[MetadataFilter(key="Tag", value=args.folder)], condition="or"
+            filters=[MetadataFilter(key="Tag", value=get_tag_from_dir(args.folder))], condition="or"
         )
 
     retriever = create_retriever(
