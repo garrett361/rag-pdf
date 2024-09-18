@@ -87,19 +87,15 @@ def main(
     new_after_n_chars: int,
     folder_tags: bool = False,
 ) -> None:
+    input_path = Path(input)
+    if input_path.is_file():
+        raise ValueError("input expected to be a directory, not a file")
+    # Use the last directory as the tag for all docs, if using folder_tags
+    tag = input_path.parts[-1] if folder_tags else None
+    print(f"{tag=}")
     for dirpath, _, files in os.walk(input):
         for file in files:
             input_file = os.path.join(dirpath, file)
-            if folder_tags:
-                tag = dirpath.replace(input, "")
-                if tag.endswith("/"):
-                    tag = tag[:-1]
-                if tag.startswith("/"):
-                    tag = tag[1:]
-                if "/" in tag:
-                    tag = tag.split("/")[0]
-            else:
-                tag = None
             parse(
                 input_file,
                 output,
