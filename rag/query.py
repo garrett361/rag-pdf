@@ -205,9 +205,7 @@ def print_references(nodes):
 if __name__ == "__main__":
     print("\n**********  QUERYING **********\n")
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--query", type=str, default="What is the meaning of life?", help="Query to ask of the llm"
-    )
+    parser.add_argument("--query", type=str, default=None, help="Query to ask of the llm")
     parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")
     parser.add_argument(
         "--embedding_model_path",
@@ -298,8 +296,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.query and args.query_file:
-        raise ValueError("Only one of --query or --query-file may be provided.")
+    if sum((bool(args.query), bool(args.query_file))) != 1:
+        raise ValueError("Exactly one of --query or --query-file must be provided.")
     if args.folder and args.query_all:
         raise ValueError("Only one of --folder or --query-all may be provided.")
 
