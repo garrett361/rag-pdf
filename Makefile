@@ -39,11 +39,16 @@ test-embed-hosted:
 
 .PHONY: test-query
 test-query:
-	python -m rag.query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5
+	python -m rag.query --query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5
 
 .PHONY: test-query-hosted
 test-query-hosted:
-	python -m rag.query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED}
+	python -m rag.query --query '${QUERY}' --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED}
+
+
+.PHONY: test-query-file-hosted
+test-query-file-hosted:
+	python -m rag.query --query-file test_queries.txt --path-to-db private/test/embedded --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED}
 
 .PHONY: test
 test:
