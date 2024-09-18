@@ -137,12 +137,7 @@ def get_nodes(
 
 def get_llm_answer(llm, tag, args, query_list=None):
     filters = None
-    if tag:
-        filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
-    elif args.folder:
-        filters = MetadataFilters(
-            filters=[MetadataFilter(key="Tag", value=get_tag_from_dir(args.folder))], condition="or"
-        )
+    filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
 
     retriever = create_retriever(
         cutoff=args.cutoff, top_k_retriever=args.top_k_retriever, filters=filters
@@ -277,11 +272,6 @@ if __name__ == "__main__":
         help="Only use documents initially under that folder name.",
     )
     parser.add_argument(
-        "--query-all",
-        help="Query documents from each folder separately. Overrides the --folder argument.",
-        action="store_true",
-    )
-    parser.add_argument(
         "--query-file",
         default=None,
         type=str,
@@ -298,8 +288,6 @@ if __name__ == "__main__":
 
     if sum((bool(args.query), bool(args.query_file))) != 1:
         raise ValueError("Exactly one of --query or --query-file must be provided.")
-    if args.folder and args.query_all:
-        raise ValueError("Only one of --folder or --query-all may be provided.")
 
     if "Meta-Llama-3.1" not in args.model_name:
         # Only tested with Meta-Llama-3.1 so far. The system prompt and tokenization would need to
@@ -311,12 +299,12 @@ if __name__ == "__main__":
 
     index, chunks = load_data(args.embedding_model_path, args.path_to_db)
 
-    tags = []
+    all_tags = []
     for i in range(len(chunks["ids"])):
         eltags = chunks["metadatas"][i]["Tag"]
-        if eltags not in tags:
-            tags.append(eltags)
-    print("\nTags found: " + str(tags) + "\n")
+        if eltags not in all_tags:
+            all_tags.append(eltags)
+    print("\nAll tags found: " + str(all_tags) + "\n")
 
     reranker = LLMRerank(top_n=args.top_k_reranker) if args.top_k_reranker else None
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
@@ -358,11 +346,15 @@ if __name__ == "__main__":
             query_list.append(query.replace("\n", ""))
 
     # Loop though all folders if wanting to get query answers for all docs
-    if args.query_all:
-        for tag in tags:
+    if args.folder:
+        tag = get_tag_from_dir(args.folder)
+        if tag not in all_tags:
+            raise ValueError(
+                f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
+            )
+        print("\n\nApply query to " + tag + " folder only")
+        get_llm_answer(llm, tag, args, query_list)
+    else:
+        for tag in all_tags:
             print("\n\nApply query to " + tag + " folder only")
             get_llm_answer(llm, tag, args, query_list)
-
-    # Otherwise, get answers either from all documents mixed up, or from a single folder if using --folder parameter
-    else:
-        get_llm_answer(llm, None, args, query_list)
