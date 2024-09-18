@@ -58,6 +58,7 @@ class Metadata(dict):
     url: Optional[str] = None
     text_as_html: Optional[str] = None
     tag: Optional[str] = None
+    question_answered: Optional[str] = None
 
 
 class DataElement(dict):
