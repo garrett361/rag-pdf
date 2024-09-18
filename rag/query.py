@@ -304,7 +304,7 @@ if __name__ == "__main__":
         eltags = chunks["metadatas"][i]["Tag"]
         if eltags not in all_tags:
             all_tags.append(eltags)
-    print("\nTags found: " + str(all_tags) + "\n")
+    print("\nAll tags found: " + str(all_tags) + "\n")
 
     reranker = LLMRerank(top_n=args.top_k_reranker) if args.top_k_reranker else None
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
