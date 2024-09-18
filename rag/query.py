@@ -35,13 +35,12 @@ def get_llama3_1_instruct_str(
         context_str += node.text.replace("\n", "  \n")
     # print(f"\nUsing {context_str=}\n")
 
-    # https://huggingface.co/blog/not-lain/rag-chatbot-using-llama3
     context_and_query = f"""
-Context information is below.
+ Please use the context provided below to answer the associated questions.
 ---------------------
 {context_str}
 ---------------------
-Given the context information and not prior knowledge, answer the query.
+
 Query: {query}
 Answer:
     """
@@ -93,6 +92,44 @@ def get_local_llm(
 
 def load_data(
     embedding_model_path: str, path_to_db: str
+) -> tuple[VectorStoreIndex, dict]:
+    if embedding_model_path.startswith("http"):
+        print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
+        embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
+    else:
+        print(f"\nEmbedding model: {embedding_model_path}\n")
+        embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
+
+    import weaviate
+    from llama_index.vector_stores.weaviate import WeaviateVectorStore
+    try:
+        weaviate_client = weaviate.WeaviateClient(
+            embedded_options=weaviate.EmbeddedOptions(
+                persistence_data_path=path_to_db
+            )
+        )
+        weaviate_client.connect()
+    except:
+        weaviate_client = weaviate.connect_to_local(port=8079, grpc_port=50060)
+        print(weaviate_client.is_ready())
+
+    vector_store = WeaviateVectorStore(weaviate_client=weaviate_client, index_name="Documents")
+
+    index = VectorStoreIndex.from_vector_store(
+        vector_store,
+        embed_model=embed_model,
+    )
+
+    # Fetch all objects from the Weaviate class
+    collection = weaviate_client.collections.get("Documents")
+    results = []
+    for item in collection.iterator():
+        results.append(item)
+
+    return index, results
+
+def load_data_chroma(
+    embedding_model_path: str, path_to_db: str
 ) -> tuple[VectorStoreIndex, chromadb.GetResult]:
     if embedding_model_path.startswith("http"):
         print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
@@ -110,14 +147,14 @@ def load_data(
     return index, chroma_collection.get()
 
 
-def create_retriever(
-    index: VectorStoreIndex, cutoff: float, top_k_retriever: int, filters=None
-) -> VectorIndexRetriever:
+def create_retriever(index: VectorStoreIndex, cutoff=None,top_k_retriever: int,  alpha=0.5, filters=None) -> VectorIndexRetriever:
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=top_k_retriever,
         filters=filters,
-        node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
+        vector_store_query_mode="hybrid",
+        alpha=alpha,
+        #node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
     )
     return retriever
 
@@ -129,8 +166,10 @@ def get_nodes(
     Retrieve the most relevant chunks, given the query.
     """
     # Wrap in a QueryBundle class in order to use reranker.
+    #query_str = f"Represent this sentence for searching relevant passages: {query}"
     query_bundle = QueryBundle(query)
     nodes = retriever.retrieve(query_bundle)
+    nodes = nodes[::-1]
 
     if reranker is not None:
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
@@ -162,7 +201,7 @@ def get_llm_answer2(
     reranker: Optional[LLMRerank] = None,
 ) -> str:
     filters = None
-    filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
+    #filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
 
     retriever = create_retriever(
         index=index, cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters
@@ -208,12 +247,10 @@ def get_llm_answer2(
 def print_references(nodes):
     # TODO: @garrett.goon - Delete below, just for debugging/visuals
     print("\n **** REFERENCES **** \n")
-    for n in nodes[0:1]:
+    for n in nodes[0:5]:
         title = n.node.metadata["Source"]
-        page = n.node.metadata["Page Number"]
+        page = n.node.metadata["PageNumber"]
         text = n.node.text
-        commit = n.node.metadata["Commit"]
-        doctag = n.node.metadata["Tag"]
         newtext = text.encode("unicode_escape").decode("unicode_escape")
         out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((n.score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
@@ -325,8 +362,8 @@ if __name__ == "__main__":
     index, chunks = load_data(args.embedding_model_path, args.path_to_db)
 
     all_tags = []
-    for i in range(len(chunks["ids"])):
-        eltags = chunks["metadatas"][i]["Tag"]
+    for i in range(len(chunks)):
+        eltags = chunks[i].properties["tag"]
         if eltags not in all_tags:
             all_tags.append(eltags)
     print("\nAll tags found: " + str(all_tags) + "\n")
