@@ -297,6 +297,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    if args.query and args.query_file:
+        raise ValueError("Only one of --query or --query-file may be provided.")
+    if args.folder and args.query_all:
+        raise ValueError("Only one of --folder or --query-all may be provided.")
+
     if "Meta-Llama-3.1" not in args.model_name:
         # Only tested with Meta-Llama-3.1 so far. The system prompt and tokenization would need to
         # be adjusted for other models.
