@@ -72,8 +72,6 @@ def parse(
     if not output_path.parent.exists():
         print(f"Creating {input_file_path.parent.absolute()=}")
         os.makedirs(output_path.parent.absolute())
-    else:
-        print("Here")
     with open(output_path, "w") as f:
         logger.info(f"Writing output to {output_path}")
         json.dump(output_list, f, indent=4)
