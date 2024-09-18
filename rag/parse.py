@@ -120,7 +120,9 @@ def main(
 if __name__ == "__main__":
     print("\n**********  PARSING **********\n")
     parser = argparse.ArgumentParser(description="File Parser")
-    parser.add_argument("--input", type=str, help="input directory")
+    parser.add_argument(
+        "--input", type=str, help="Input directory containing to-be-parsed subdirectories."
+    )
     parser.add_argument("--output", default="./output", help="output directory")
     parser.add_argument("--strategy", default="auto", help="parsing strategy")
     parser.add_argument(
