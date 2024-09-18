@@ -54,7 +54,7 @@ def parse(
     new_after_n_chars: Optional[int] = None,
     tag=None,
 ) -> None:
-    logger.info(f"Processing {input_file}")
+    logger.info(f"Processing {input_file}. Using {tag=}")
     elements = partition(
         filename=input_file,
         skip_infer_table_types=[],
@@ -88,12 +88,25 @@ def main(
     new_after_n_chars: int,
     folder_tags: bool = False,
 ) -> None:
-    tag = get_tag_from_dir(input) if folder_tags else None
-    for dirpath, _, files in os.walk(input):
-        for file in files:
-            input_file = os.path.join(dirpath, file)
+    # The expectation is that input is a directory which contains various subdirs and no files.
+    # Each subdir should itself only contain files, and not additional subdirs, and the contents of
+    # each subdir will be parsed and tagged together.
+    input_path = Path(input)
+    if input_path.is_file():
+        raise ValueError("Input must be a directory, not a file.")
+    for subdir in input_path.iterdir():
+        if subdir.is_file():
+            raise ValueError(
+                f"Input dir is expected to contain only subdirectories and no files. Found file {subdir=}"
+            )
+        tag = get_tag_from_dir(subdir) if folder_tags else None
+        for file in subdir.iterdir():
+            if file.is_dir():
+                raise ValueError(
+                    f"Subdirectories may only contain files and no additional subdirs. Found subdir {file=}"
+                )
             parse(
-                input_file,
+                file,
                 output,
                 strategy,
                 chunking_strategy,
