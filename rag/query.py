@@ -348,6 +348,10 @@ if __name__ == "__main__":
     # Loop though all folders if wanting to get query answers for all docs
     if args.folder:
         tag = get_tag_from_dir(args.folder)
+        if tag not in all_tags:
+            raise ValueError(
+                f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
+            )
         print("\n\nApply query to " + tag + " folder only")
         get_llm_answer(llm, tag, args, query_list)
     else:
