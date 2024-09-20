@@ -1,7 +1,4 @@
-#QUERY = "What is the name of the project?"
-#QUERY = "What is the End Customer name?"
-#QUERY = "What are the plant location conditions?"
-QUERY = "Provide the list of documents with proposals related to the system architecture."
+QUERY = "What is the name of the project? Please respond in JSON format."
 HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
