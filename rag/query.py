@@ -175,9 +175,9 @@ def get_llm_answer(llm, tag, args, query_list=None):
         elif args.folder:
             suffix = args.folder
 
-        csv_name = args.output_folder + "/extracted_info_" + suffix + ".csv"
-        print("Saving output to " + csv_name)
-        output_df.to_csv(csv_name, index=False)
+        xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
+        print("Saving output to " + xlsx_name)
+        output_df.to_excel(xlsx_name, index=False)
 
 
 def print_references(nodes):
@@ -275,7 +275,7 @@ if __name__ == "__main__":
         "--query-file",
         default=None,
         type=str,
-        help="txt file containing a single query per line. Overrides the --query argument.",
+        help="txt file containing a single query per line or xlsx file containing queries in first columns. Overrides the --query argument.",
     )
     parser.add_argument(
         "--output-folder",
@@ -337,13 +337,20 @@ if __name__ == "__main__":
     query_list = None
     if args.query_file:
         print("Using " + args.query_file + " as query list")
-        query_file = open(args.query_file, "r")
-        query_lines = query_file.readlines()
-        query_file.close()
+        
+        if args.query_file[-4:] == ".txt":
+            query_file = open(args.query_file, "r")
+            query_lines = query_file.readlines()
+            query_file.close()
 
-        query_list = []
-        for query in query_lines:
-            query_list.append(query.replace("\n", ""))
+            query_list = []
+            for query in query_lines:
+                query_list.append(query.replace("\n", ""))
+        elif args.query_file[-5:] == ".xlsx":
+            query_df = pd.read_excel(args.query_file, header=None)
+            query_list = [q for q in query_df[0]]
+        else:
+            print("Format of query file not supported")
 
     # Loop though all folders if wanting to get query answers for all docs
     if args.folder:
