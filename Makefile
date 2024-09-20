@@ -1,6 +1,3 @@
-#QUERY = "What is the name of the project?"
-#QUERY = "What is the End Customer name?"
-#QUERY = "What are the plant location conditions?"
 QUERY = "Provide the list of documents with proposals related to the system architecture."
 HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
@@ -71,3 +68,7 @@ test-hosted:
 	$(MAKE) test-parse
 	$(MAKE) test-embed-hosted
 	$(MAKE) test-query-hosted
+
+.PHONY: test-ui-hosted
+test-ui-hosted:
+	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --embedding_model_path ${HOSTED_EMBED} --cutoff 0.6
