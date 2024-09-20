@@ -116,7 +116,7 @@ def main(
                 tag,
             )
 
-1
+
 if __name__ == "__main__":
     print("\n**********  PARSING **********\n")
     parser = argparse.ArgumentParser(description="File Parser")
