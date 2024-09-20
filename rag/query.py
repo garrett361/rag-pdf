@@ -284,7 +284,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--max-new-tokens",
-        default=250,
+        default=DEFAULT_MAX_NEW_TOKS,
         type=int,
         help="Max generation toks",
     )
