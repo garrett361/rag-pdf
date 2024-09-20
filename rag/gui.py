@@ -1,40 +1,52 @@
 import argparse
 import os
+import pathlib
 
-import chromadb
 import streamlit as st
-from llama_index.core import (Settings, VectorStoreIndex,
-                              get_response_synthesizer)
+from llama_index.core import Settings, get_response_synthesizer
 from llama_index.core.postprocessor import SimilarityPostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.vector_stores.types import (MetadataFilter,
-                                                  MetadataFilters)
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.huggingface import HuggingFaceLLM
-from llama_index.llms.openllm import OpenLLMAPI
-from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
+from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer
+
+from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_MAX_NEW_TOKS
+from rag.query import get_local_llm, load_data
+
+static_path = pathlib.Path(__file__).parent.joinpath("static")
+print(f"{static_path=}")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")
 parser.add_argument(
-    "--emb-model-path",
+    "--embedding_model_path",
     type=str,
-    default=None,
+    default=DEFAULT_HF_EMBED_MODEL,
     help="local path or URL to sentence transformer model",
 )
 parser.add_argument(
-    "--path-to-chat-model",
-    default="TinyLlama/TinyLlama-1.1B-Chat-v0.4",
+    "--model-name",
+    default=DEFAULT_HF_CHAT_MODEL,
     help="local path or URL to chat model",
+)
+parser.add_argument(
+    "--chat-model-endpoint",
+    default=None,
+    type=str,
+    help="HTTP path to model endpoint, if serving",
 )
 parser.add_argument(
     "--top-k",
     default=5,
     type=int,
     help="top k results",
+)
+parser.add_argument(
+    "--max-new-tokens",
+    default=DEFAULT_MAX_NEW_TOKS,
+    type=int,
+    help="Max generation toks",
 )
 parser.add_argument(
     "--cutoff",
@@ -50,11 +62,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-st.set_page_config(
-    layout="wide", page_title="Retrieval Augmented Generation (RAG) Demo Q&A"
-)
+st.set_page_config(layout="wide", page_title="Retrieval Augmented Generation (RAG) Demo Q&A")
 
-with open("static/style.css") as css:
+with open(static_path.joinpath("style.css")) as css:
     st.markdown(f"<style>{css.read()}</style>", unsafe_allow_html=True)
 
 
@@ -79,7 +89,7 @@ st.markdown(
 st.markdown(
     """
     <div class="top-bar">
-         <img src="/app/static/hpe_pri_wht_rev_rgb.png" alt="HPE Logo" height="55">  
+         <img src="/app/static/hpe_pri_wht_rev_rgb.png" alt="HPE Logo" height="55">
     </div>
     """,
     unsafe_allow_html=True,
@@ -98,7 +108,6 @@ st.session_state.top_k = args.top_k
 
 @st.cache_data
 def load_chat_model(
-    cuda_device="cuda:0",
     temp=st.session_state.temp,
     max_length=st.session_state.max_length,
     top_p=st.session_state.top_p,
@@ -109,54 +118,32 @@ def load_chat_model(
         "top_p": top_p,
         "max_length": max_length,
     }
-    if args.path_to_chat_model.startswith("http"):
-        st.write(f"Using OpenLLM model endpoint: {args.path_to_chat_model}")
-        modelpath = str(args.path_to_chat_model)
-        llm = OpenLLMAPI(address=modelpath, generate_kwargs=generate_kwargs)
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(args.path_to_chat_model)
-        stopping_ids = [
-            tokenizer.eos_token_id,
-            tokenizer.convert_tokens_to_ids("<|eot_id|>"),
-        ]
-        llm = HuggingFaceLLM(
-            model_name=args.path_to_chat_model,
-            tokenizer_name=args.path_to_chat_model,
+    if args.chat_model_endpoint:
+        st.write(f"Using model endpoint: {args.model_name}")
+        llm = OpenLLM(
+            model=args.model_name,
+            api_base=args.chat_model_endpoint,
+            api_key="fake",
             generate_kwargs=generate_kwargs,
-            stopping_ids=stopping_ids,
+            max_tokens=args.max_new_tokens,
         )
-        st.write(f"Using local model: {args.path_to_chat_model}")
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+        llm = get_local_llm(
+            model_name=args.model_name,
+            tokenizer=tokenizer,
+            use_4_bit_quant=False,
+            generate_kwargs=generate_kwargs,
+        )
+        st.write(f"Using local model: {args.model_name}")
     Settings.llm = llm
     return None
 
 
-def load_data():
-    if args.emb_model_path.startswith("http"):
-        st.write(f"Using Embedding API model endpoint: {args.emb_model_path}")
-        embed_model = OpenAIEmbedding(api_base=args.emb_model_path, api_key="dummy")
-    else:
-        st.write(f"Embedding model: {args.emb_model_path}")
-        embed_model = HuggingFaceEmbedding(model_name=args.emb_model_path)
-    chroma_client = chromadb.PersistentClient(args.path_to_db)
-    chroma_collection = chroma_client.get_collection(name="documents")
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-    index = VectorStoreIndex.from_vector_store(
-        vector_store,
-        embed_model=embed_model,
-    )
-    return index, chroma_collection.get()
-
-
-def create_query_engine(
-    filters=None, cutoff=st.session_state.cutoff, top_k=st.session_state.top_k
-):
-    retriever = VectorIndexRetriever(
-        index=index, similarity_top_k=top_k, filters=filters
-    )
+def create_query_engine(filters=None, cutoff=st.session_state.cutoff, top_k=st.session_state.top_k):
+    retriever = VectorIndexRetriever(index=index, similarity_top_k=top_k, filters=filters)
     # configure response synthesizer
-    response_synthesizer = get_response_synthesizer(
-        response_mode="no_text", streaming=False
-    )
+    response_synthesizer = get_response_synthesizer(response_mode="no_text", streaming=False)
     query_engine = RetrieverQueryEngine.from_args(
         retriever=retriever,
         response_synthesizer=response_synthesizer,
@@ -173,11 +160,12 @@ chat_container = col1.container(height=435, border=False)
 input_container = col1.container()
 
 
-with st.spinner(f"Loading {args.path_to_chat_model} q&a model..."):
+with st.spinner(f"Loading {args.model_name} q&a model..."):
     llm = load_chat_model()
 
-with st.spinner(f"Loading data and {args.emb_model_path} embedding model..."):
-    index, chunks = load_data()
+with st.spinner(f"Loading data and {args.embedding_model_path} embedding model..."):
+    index, chunks = load_data(args.embedding_model_path, args.path_to_db)
+    print(index, chunks)
 
 
 # uploaded_files = col2.file_uploader("Upload Files", accept_multiple_files=True)
@@ -236,7 +224,7 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": welcome_message,
-            "avatar": "./static/logo.jpeg",
+            "avatar": static_path.joinpath("logo.jpeg"),
         }
     )
 
@@ -251,7 +239,7 @@ brief = "just generate the answer without a lot of explanations."
 
 
 def reload():
-    with st.spinner(f"Loading {args.path_to_chat_model} q&a model..."):
+    with st.spinner(f"Loading {args.model_name} q&a model..."):
         llm = load_chat_model(
             temp=st.session_state.temp,
             top_p=st.session_state.top_p,
@@ -277,7 +265,6 @@ with col1.expander("Settings"):
 
 # Accept user input
 if prompt := input_container.chat_input("Say something..."):
-
     with chat_container.chat_message("user"):
         st.write(prompt)
 
@@ -301,15 +288,13 @@ if prompt := input_container.chat_input("Say something..."):
         """
     llm = Settings.llm
     if args.streaming:
-        output_response = llm.stream_complete(
-            text_qa_template_str_llama3, formatted=True
-        )
-        with chat_container.chat_message("assistant", avatar="./static/logo.jpeg"):
+        output_response = llm.stream_complete(text_qa_template_str_llama3, formatted=True)
+        with chat_container.chat_message("assistant", avatar=static_path.joinpath("logo.jpeg")):
             response = st.write_stream(output_stream(output_response))
     else:
         output_response = llm.complete(text_qa_template_str_llama3)
         print(output_response)
-        with chat_container.chat_message("assistant", avatar="./static/logo.jpeg"):
+        with chat_container.chat_message("assistant", avatar=static_path.joinpath("logo.jpeg")):
             response = st.write(output_response.text)
 
     project = os.getenv("PPS_PROJECT_NAME", "default")
