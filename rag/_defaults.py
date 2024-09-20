@@ -11,3 +11,4 @@ If you don't know the answer, just say "I do not know." Don't make up an answer.
 """).strip("\n")
 # The embedding model hosted on houston errors out at larger batch sizes
 DEFAULT_MAX_EMBED_BSZ = 32
+DEFAULT_MAX_NEW_TOKS = 500
