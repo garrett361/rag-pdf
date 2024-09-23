@@ -18,7 +18,7 @@ Below is a text extract from a document. I will ask you whether the extract look
 
 Extract: {context}
 
-Headers, footers, and tables of contents are examples of non-informative extracts. Did the above extract look informative? Only respond with "yes" or "no".
+Headers, footers, and tables of contents are examples of non-informative extracts. Does the above extract look uninformative? Only respond with "yes" or "no".
 """).strip("\n")
 
 QA_PROMPT = dedent("""
