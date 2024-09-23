@@ -1,12 +1,12 @@
 QUERY = "Provide the list of documents with proposals related to the system architecture."
-HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
-HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
+HOSTED_CHAT = "http://llama-3-1-8b.pdk.10.6.39.90.sslip.io/v1"
+HOSTED_EMBED = "http://embedding-model.pdk.10.6.39.90.sslip.io/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
 FOLDER = "Petrobras"
 OUTPUT_FOLDER = "private/test/query"
 PATH_TO_DB = "private/test/embedded"
 MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 .PHONY: install
 install:
