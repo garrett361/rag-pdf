@@ -171,7 +171,11 @@ def get_nodes(
     # query_str = f"Represent this sentence for searching relevant passages: {query}"
     query_bundle = QueryBundle(query)
     nodes = retriever.retrieve(query_bundle)
+    # Weaviate returns nodes in reversed relevant order
     nodes = nodes[::-1]
+    # Sanity check that the nodes are now sorted in descending order
+    scores = [n.score for n in nodes]
+    assert sorted(scores) == list(reversed(scores)), f"{sorted(scores)=}, {list(reversed(scores))=}"
 
     if reranker is not None:
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
