@@ -8,7 +8,7 @@ import chromadb
 import pandas as pd
 import torch
 from llama_index.core import VectorStoreIndex
-from llama_index.core.postprocessor import LLMRerank, SimilarityPostprocessor
+from llama_index.core.postprocessor import LLMRerank
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
@@ -90,9 +90,7 @@ def get_local_llm(
     return llm
 
 
-def load_data(
-    embedding_model_path: str, path_to_db: str
-) -> tuple[VectorStoreIndex, dict]:
+def load_data(embedding_model_path: str, path_to_db: str) -> tuple[VectorStoreIndex, dict]:
     if embedding_model_path.startswith("http"):
         print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
@@ -102,11 +100,10 @@ def load_data(
 
     import weaviate
     from llama_index.vector_stores.weaviate import WeaviateVectorStore
+
     try:
         weaviate_client = weaviate.WeaviateClient(
-            embedded_options=weaviate.EmbeddedOptions(
-                persistence_data_path=path_to_db
-            )
+            embedded_options=weaviate.EmbeddedOptions(persistence_data_path=path_to_db)
         )
         weaviate_client.connect()
     except:
@@ -128,6 +125,7 @@ def load_data(
 
     return index, results
 
+
 def load_data_chroma(
     embedding_model_path: str, path_to_db: str
 ) -> tuple[VectorStoreIndex, chromadb.GetResult]:
@@ -147,14 +145,16 @@ def load_data_chroma(
     return index, chroma_collection.get()
 
 
-def create_retriever(index: VectorStoreIndex, cutoff=None,top_k_retriever: int,  alpha=0.5, filters=None) -> VectorIndexRetriever:
+def create_retriever(
+    index: VectorStoreIndex, cutoff: str, top_k_retriever: int, alpha=0.5, filters=None
+) -> VectorIndexRetriever:
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=top_k_retriever,
         filters=filters,
         vector_store_query_mode="hybrid",
         alpha=alpha,
-        #node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
+        # node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
     )
     return retriever
 
@@ -166,7 +166,8 @@ def get_nodes(
     Retrieve the most relevant chunks, given the query.
     """
     # Wrap in a QueryBundle class in order to use reranker.
-    #query_str = f"Represent this sentence for searching relevant passages: {query}"
+    # NOTE: @garrett.goon - Liam tried wrapping with query_str below, but found it didn't help.
+    # query_str = f"Represent this sentence for searching relevant passages: {query}"
     query_bundle = QueryBundle(query)
     nodes = retriever.retrieve(query_bundle)
     nodes = nodes[::-1]
@@ -185,9 +186,6 @@ def get_llm_answer(
         llm.stream_complete(prefix, formatted=True) if streaming else llm.complete(prefix)
     )
     return output_response
-
-
-
 
 
 def print_references(nodes):

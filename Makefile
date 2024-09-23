@@ -34,6 +34,10 @@ clean:
 test-parse:
 	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars 50 --max_characters 1500 --new_after_n_chars 1500
 
+.PHONY: test-parse-hosted-cleaned
+test-parse-hosted-cleaned:
+	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars 50 --max_characters 1500 --new_after_n_chars 1500 --clean-parse-with-llm --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT}
+
 .PHONY: test-embed
 test-embed:
 	python -m rag.embed --data-path private/test/parsed --path-to-db ${PATH_TO_DB}

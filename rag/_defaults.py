@@ -12,3 +12,16 @@ If you don't know the answer, just say "I do not know." Don't make up an answer.
 # The embedding model hosted on houston errors out at larger batch sizes
 DEFAULT_MAX_EMBED_BSZ = 32
 DEFAULT_MAX_NEW_TOKS = 500
+UNINFORMATIVE_PROMPT = dedent("""
+Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
+{context}
+
+Only respond with "yes" or "no".
+""").strip("\n")
+
+QA_PROMPT = dedent("""
+Generate the main question that is answered by the information provided in the passage below.  Ignore weird formatting or characters that look out of place.
+{context}
+
+Only respond with the question.
+""").strip("\n")
