@@ -89,7 +89,7 @@ st.markdown(
 st.markdown(
     """
     <div class="top-bar">
-         <img src="/app/static/hpe_pri_wht_rev_rgb.png" alt="HPE Logo" height="55">
+         <img src="app/static/hpe_pri_wht_rev_rgb.png" alt="HPE Logo" height="55">
     </div>
     """,
     unsafe_allow_html=True,
@@ -224,7 +224,7 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": welcome_message,
-            "avatar": static_path.joinpath("logo.jpeg"),
+            "avatar": str(static_path.joinpath("logo.jpeg")),
         }
     )
 
@@ -289,12 +289,16 @@ if prompt := input_container.chat_input("Say something..."):
     llm = Settings.llm
     if args.streaming:
         output_response = llm.stream_complete(text_qa_template_str_llama3, formatted=True)
-        with chat_container.chat_message("assistant", avatar=static_path.joinpath("logo.jpeg")):
+        with chat_container.chat_message(
+            "assistant", avatar=str(static_path.joinpath("logo.jpeg"))
+        ):
             response = st.write_stream(output_stream(output_response))
     else:
         output_response = llm.complete(text_qa_template_str_llama3)
         print(output_response)
-        with chat_container.chat_message("assistant", avatar=static_path.joinpath("logo.jpeg")):
+        with chat_container.chat_message(
+            "assistant", avatar=str(static_path.joinpath("logo.jpeg"))
+        ):
             response = st.write(output_response.text)
 
     project = os.getenv("PPS_PROJECT_NAME", "default")
