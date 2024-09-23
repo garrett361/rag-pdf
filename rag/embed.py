@@ -49,7 +49,7 @@ def main(data_path: str, path_to_db: str, embed_model: str, db: chromadb.Persist
                             tag = ""
                         metadata = {
                             "Source": source,
-                            "Page Number": page_number,
+                            "PageNumber": page_number,
                             "Commit": os.environ.get("PACH_JOB_ID", ""),
                             "Tag": tag,
                         }
