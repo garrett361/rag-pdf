@@ -187,61 +187,7 @@ def get_llm_answer(
     return output_response
 
 
-def get_llm_answer2(
-    llm,
-    tokenizer: PreTrainedTokenizer,
-    index: VectorStoreIndex,
-    tag: str,
-    cutoff: float,
-    top_k_retriever: int,
-    query: Optional[str] = None,
-    query_list: Optional[list[str]] = None,
-    output_folder: Optional[str] = None,
-    folder: Optional[str] = None,
-    reranker: Optional[LLMRerank] = None,
-) -> str:
-    filters = None
-    #filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
 
-    retriever = create_retriever(
-        index=index, cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters
-    )
-
-    d = {}
-    d["Queries"] = []
-    d["Answers"] = []
-    d["Main Source"] = []
-
-    query_list = query_list or [query]
-    d["Queries"] = query_list
-
-    for q in query_list:
-        print("\nQuery: " + q)
-        nodes = get_nodes(q, retriever, reranker)
-        prefix = get_llama3_1_instruct_str(q, nodes, tokenizer)
-
-        output_response = llm.complete(prefix)
-        print(f"{output_response.text=}\n")
-
-        d["Answers"].append(output_response.text)
-        d["Main Source"].append(
-            nodes[0].node.metadata["Source"] + ", page " + str(nodes[0].node.metadata["PageNumber"])
-        )
-
-    if output_folder:
-        output_df = pd.DataFrame(data=d)
-
-        suffix = "all_documents_mixed"
-        if tag:
-            suffix = tag
-        elif folder:
-            suffix = folder
-
-        xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
-        print("Saving output to " + xlsx_name)
-        output_df.to_excel(xlsx_name, index=False)
-
-    return output_response.text
 
 
 def print_references(nodes):
