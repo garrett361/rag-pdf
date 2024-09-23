@@ -45,7 +45,13 @@ For query:
 - Query using locally hosted LLM: `python -m rag.query "What is the name of the project?" --path-to-db <path-to-db> --model-name meta-llama/Meta-Llama-3.1-8B-Instruct --top-k-retriever 5`
 - Query using endpoint-hosted embedding model and LLM: `python -m rag.query "What is the name of the project?" --path-to-db <path-to-db> --model-name meta-llama/Meta-Llama-3.1-70B-Instruct --top-k-retriever 5 --chat-model-endpoint http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1/ --embedding_model_path http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1`
 
-  -------------- ORIGINAL README BELOW --------------
+## Docker
+
+To create docker files for the entire workflow under `rag/`, run `build_base_image.sh` (which takes
+care of requirements and can take a while), followed by `build_image.sh`. Both of these are located
+at the root level. The final image will be tagged with the short git hash.
+
+-------------- ORIGINAL README BELOW --------------
 
 # RAG demo (Chat with HPE Press Release version)
 
