@@ -154,6 +154,7 @@ def create_retriever(
         filters=filters,
         vector_store_query_mode="hybrid",
         alpha=alpha,
+        # SimilarityPostprocessor not working with weaviate==0.1.0, llama-index-vector-stores-weaviate==1.1.1
         # node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
     )
     return retriever
@@ -289,6 +290,12 @@ if __name__ == "__main__":
         type=str,
         help="Save queries output to csv files under that path.",
     )
+    parser.add_argument(
+        "--alpha",
+        default=0.5,
+        type=float,
+        help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
+    )
 
     args = parser.parse_args()
 
@@ -389,6 +396,7 @@ if __name__ == "__main__":
                 index=index,
                 cutoff=args.cutoff,
                 top_k_retriever=args.top_k_retriever,
+                alpha=args.alpha,
                 filters=filters,
             )
             nodes = get_nodes(query, retriever, reranker=None)
