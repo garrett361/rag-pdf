@@ -51,12 +51,7 @@ parser.add_argument(
     type=float,
     help="cutoff for similarity score",
 )
-parser.add_argument(
-    "--streaming",
-    default=True,
-    help="stream responses",
-    action=argparse.BooleanOptionalAction,
-)
+parser.add_argument("--streaming", help="stream responses", action="store_true")
 args = parser.parse_args()
 
 st.set_page_config(layout="wide", page_title="Retrieval Augmented Generation (RAG) Demo Q&A")
@@ -102,6 +97,8 @@ st.session_state.max_length = 250
 st.session_state.cutoff = args.cutoff
 st.session_state.top_k_retriever = args.top_k_retriever
 
+tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+
 
 @st.cache_data
 def load_chat_model(
@@ -125,7 +122,6 @@ def load_chat_model(
             max_tokens=args.max_new_tokens,
         )
     else:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
         Settings.llm = get_local_llm(
             model_name=args.model_name,
             tokenizer=tokenizer,
@@ -147,7 +143,6 @@ with st.spinner(f"Loading {args.model_name} q&a model..."):
 
 with st.spinner(f"Loading data and {args.embedding_model_path} embedding model..."):
     index, chunks = load_data(args.embedding_model_path, args.path_to_db)
-    print(index, chunks)
 
 
 tags = []
@@ -219,13 +214,14 @@ brief = "just generate the answer without a lot of explanations."
 
 def reload():
     with st.spinner(f"Loading {args.model_name} q&a model..."):
-        Settings.llm = load_chat_model(
+        load_chat_model(
             temp=st.session_state.temp,
             top_p=st.session_state.top_p,
             max_length=st.session_state.max_length,
         )
     global retriever
     retriever = create_retriever(
+        index=index,
         cutoff=st.session_state.cutoff,
         top_k_retriever=st.session_state.top_k_retriever,
         filters=filters,
@@ -258,7 +254,9 @@ if prompt := input_container.chat_input("Say something..."):
             "assistant", avatar=str(static_path.joinpath("logo.jpeg"))
         ):
             # TODO: @garrett.goon - fix tag placeholder
-            response = get_llm_answer(Settings.llm, "NZT", cutoff, top_k_retriever, query=prompt)
+            response = get_llm_answer(
+                Settings.llm, tokenizer, index, "NZT", cutoff, top_k_retriever, query=prompt
+            )
             st.write(response)
 
     project = os.getenv("PPS_PROJECT_NAME", "default")

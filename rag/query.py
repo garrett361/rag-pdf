@@ -110,7 +110,9 @@ def load_data(
     return index, chroma_collection.get()
 
 
-def create_retriever(cutoff: float, top_k_retriever: int, filters=None) -> VectorIndexRetriever:
+def create_retriever(
+    index: VectorStoreIndex, cutoff: float, top_k_retriever: int, filters=None
+) -> VectorIndexRetriever:
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=top_k_retriever,
@@ -137,6 +139,8 @@ def get_nodes(
 
 def get_llm_answer(
     llm,
+    tokenizer: PreTrainedTokenizer,
+    index: VectorStoreIndex,
     tag: str,
     cutoff: float,
     top_k_retriever: int,
@@ -144,11 +148,14 @@ def get_llm_answer(
     query_list: Optional[list[str]] = None,
     output_folder: Optional[str] = None,
     folder: Optional[str] = None,
-):
+    reranker: Optional[LLMRerank] = None,
+) -> str:
     filters = None
     filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
 
-    retriever = create_retriever(cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters)
+    retriever = create_retriever(
+        index=index, cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters
+    )
 
     d = {}
     d["Queries"] = []
@@ -183,6 +190,8 @@ def get_llm_answer(
         xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
         print("Saving output to " + xlsx_name)
         output_df.to_excel(xlsx_name, index=False)
+
+    return output_response.text
 
 
 def print_references(nodes):
@@ -367,6 +376,8 @@ if __name__ == "__main__":
         print("\n\nApply query to " + tag + " folder only")
         get_llm_answer(
             llm,
+            tokenizer,
+            index,
             tag,
             args.cutoff,
             args.top_k_retriever,
@@ -379,6 +390,8 @@ if __name__ == "__main__":
         for tag in all_tags:
             get_llm_answer(
                 llm,
+                tokenizer,
+                index,
                 tag,
                 args.cutoff,
                 args.top_k_retriever,
