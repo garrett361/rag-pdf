@@ -48,7 +48,7 @@ test-query:
 
 .PHONY: test-query-hosted
 test-query-hosted:
-	python -m rag.query --query '${QUERY}' ${--path-to-db} PATH_TO_DB --model-name ${MODEL_NAME_HOSTED} --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER}
+	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER}
 
 
 .PHONY: test-query-file-hosted
