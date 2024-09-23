@@ -137,11 +137,11 @@ def get_nodes(
 
 def get_llm_answer(
     llm,
-    query: str,
     tag: str,
     cutoff: float,
     top_k_retriever: int,
-    query_list=None,
+    query: Optional[str] = None,
+    query_list: Optional[list[str]] = None,
     output_folder: Optional[str] = None,
     folder: Optional[str] = None,
 ):
@@ -367,10 +367,10 @@ if __name__ == "__main__":
         print("\n\nApply query to " + tag + " folder only")
         get_llm_answer(
             llm,
-            args.query,
             tag,
             args.cutoff,
             args.top_k_retriever,
+            args.query,
             query_list,
             args.output_folder,
             args.folder,
@@ -379,10 +379,10 @@ if __name__ == "__main__":
         for tag in all_tags:
             get_llm_answer(
                 llm,
-                args.query,
                 tag,
                 args.cutoff,
                 args.top_k_retriever,
+                args.query,
                 query_list,
                 args.output_folder,
                 args.folder,
