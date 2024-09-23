@@ -120,7 +120,7 @@ def clean_parsed(json_file, llm, tokenizer):
             uninformative = generate_completion(
                 llm, tokenizer, UNINFORMATIVE_PROMPT.format(context=text)
             ).text
-            if uninformative == "yes":
+            if uninformative.lower() == "yes":
                 print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
                 print(text)
                 print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
