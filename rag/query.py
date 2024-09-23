@@ -135,20 +135,27 @@ def get_nodes(
     return nodes
 
 
-def get_llm_answer(llm, tag, args, query_list=None):
+def get_llm_answer(
+    llm,
+    query: str,
+    tag: str,
+    cutoff: float,
+    top_k_retriever: int,
+    query_list=None,
+    output_folder: Optional[str] = None,
+    folder: Optional[str] = None,
+):
     filters = None
     filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
 
-    retriever = create_retriever(
-        cutoff=args.cutoff, top_k_retriever=args.top_k_retriever, filters=filters
-    )
+    retriever = create_retriever(cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters)
 
     d = {}
     d["Queries"] = []
     d["Answers"] = []
     d["Main Source"] = []
 
-    query_list = query_list or [args.query]
+    query_list = query_list or [query]
     d["Queries"] = query_list
 
     for q in query_list:
@@ -164,14 +171,14 @@ def get_llm_answer(llm, tag, args, query_list=None):
             nodes[0].node.metadata["Source"] + ", page " + str(nodes[0].node.metadata["PageNumber"])
         )
 
-    if args.output_folder:
+    if output_folder:
         output_df = pd.DataFrame(data=d)
 
         suffix = "all_documents_mixed"
         if tag:
             suffix = tag
-        elif args.folder:
-            suffix = args.folder
+        elif folder:
+            suffix = folder
 
         xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
         print("Saving output to " + xlsx_name)
@@ -335,7 +342,7 @@ if __name__ == "__main__":
     query_list = None
     if args.query_file:
         print("Using " + args.query_file + " as query list")
-        
+
         if args.query_file[-4:] == ".txt":
             query_file = open(args.query_file, "r")
             query_lines = query_file.readlines()
@@ -358,8 +365,26 @@ if __name__ == "__main__":
                 f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
             )
         print("\n\nApply query to " + tag + " folder only")
-        get_llm_answer(llm, tag, args, query_list)
+        get_llm_answer(
+            llm,
+            args.query,
+            tag,
+            args.cutoff,
+            args.top_k_retriever,
+            query_list,
+            args.output_folder,
+            args.folder,
+        )
     else:
         for tag in all_tags:
+            get_llm_answer(
+                llm,
+                args.query,
+                tag,
+                args.cutoff,
+                args.top_k_retriever,
+                query_list,
+                args.output_folder,
+                args.folder,
+            )
             print("\n\nApply query to " + tag + " folder only")
-            get_llm_answer(llm, tag, args, query_list)
