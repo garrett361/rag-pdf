@@ -143,7 +143,7 @@ def get_llm_answer(
     streaming: bool = False,
 ) -> str:
     output_response = (
-        llm.stream_complete(prefix, formatter=True) if streaming else llm.complete(prefix)
+        llm.stream_complete(prefix, formatted=True) if streaming else llm.complete(prefix)
     )
     return output_response
 

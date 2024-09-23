@@ -9,7 +9,14 @@ from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer
 
 from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_MAX_NEW_TOKS
-from rag.query import create_retriever, get_llm_answer, get_local_llm, get_nodes, load_data
+from rag.query import (
+    create_retriever,
+    get_llama3_1_instruct_str,
+    get_llm_answer,
+    get_local_llm,
+    get_nodes,
+    load_data,
+)
 
 static_path = pathlib.Path(__file__).parent.joinpath("static")
 print(f"{static_path=}")
@@ -245,19 +252,16 @@ if prompt := input_container.chat_input("Say something..."):
     with chat_container.chat_message("user"):
         st.write(prompt)
 
+    nodes = get_nodes(prompt, retriever, reranker=None)
+    prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer)
     print(f"Querying with prompt: {prompt}")
     nodes = get_nodes(prompt, retriever, reranker=None)
-    if args.streaming:
-        raise ValueError("Streaming not yet supported")
-    else:
-        with chat_container.chat_message(
-            "assistant", avatar=str(static_path.joinpath("logo.jpeg"))
-        ):
-            # TODO: @garrett.goon - fix tag placeholder
-            response = get_llm_answer(
-                Settings.llm, tokenizer, index, "NZT", cutoff, top_k_retriever, query=prompt
-            )
-            st.write(response)
+    response = get_llm_answer(Settings.llm, prefix, args.streaming)
+    with chat_container.chat_message("assistant", avatar=str(static_path.joinpath("logo.jpeg"))):
+        if args.streaming:
+            st.write_stream(output_stream(response))
+        else:
+            st.write(response.text)
 
     project = os.getenv("PPS_PROJECT_NAME", "default")
     doc_repo = os.getenv("DOCUMENT_REPO", "documents")

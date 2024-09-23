@@ -72,4 +72,4 @@ test-hosted:
 
 .PHONY: test-ui-hosted
 test-ui-hosted:
-	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --embedding_model_path ${HOSTED_EMBED} --cutoff 0.6 --chat-model-endpoint ${HOSTED_CHAT}
+	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --embedding_model_path ${HOSTED_EMBED} --cutoff 0.6 --chat-model-endpoint ${HOSTED_CHAT} --streaming
