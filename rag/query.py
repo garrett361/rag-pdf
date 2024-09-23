@@ -161,9 +161,7 @@ def get_llm_answer(llm, tag, args, query_list=None):
 
         d["Answers"].append(output_response.text)
         d["Main Source"].append(
-            nodes[0].node.metadata["Source"]
-            + ", page "
-            + str(nodes[0].node.metadata["Page Number"])
+            nodes[0].node.metadata["Source"] + ", page " + str(nodes[0].node.metadata["PageNumber"])
         )
 
     if args.output_folder:

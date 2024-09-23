@@ -305,7 +305,7 @@ if prompt := input_container.chat_input("Say something..."):
         references = output.source_nodes
         for i in range(len(references)):
             title = references[i].node.metadata["Source"]
-            page = references[i].node.metadata["Page Number"]
+            page = references[i].node.metadata["PageNumber"]
             text = references[i].node.text
             commit = references[i].node.metadata["Commit"]
             doctag = references[i].node.metadata["Tag"]
