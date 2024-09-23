@@ -168,7 +168,6 @@ with st.spinner(f"Loading data and {args.embedding_model_path} embedding model..
     print(index, chunks)
 
 
-# uploaded_files = col2.file_uploader("Upload Files", accept_multiple_files=True)
 tags = []
 uploaded_files = {}
 filters = None
@@ -212,8 +211,6 @@ if len(tags) > 0:
         "Select Tags to Filter on:", tags, on_change=list_sources(), key="tags"
     )
     col1.divider()
-# elif len(tags) == 1:
-#    filter_tags = col1.multiselect("Select Tags for Retrieval", tags, default=tags[0], on_change=list_sources, key='tags')
 
 
 # Initialize chat history
