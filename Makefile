@@ -1,4 +1,4 @@
-QUERY = "What are the plan location conditions?"
+QUERY = "What are the plant location conditions?"
 HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
