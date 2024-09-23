@@ -4,7 +4,6 @@ from pprint import pprint
 from textwrap import dedent
 from typing import Optional
 
-import chromadb
 import pandas as pd
 import torch
 from llama_index.core import VectorStoreIndex
@@ -16,10 +15,15 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.llms.openllm import OpenLLM
-from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_SYSTEM_PROMPT
+from rag._defaults import (
+    DEFAULT_ALPHA,
+    DEFAULT_HF_CHAT_MODEL,
+    DEFAULT_HF_EMBED_MODEL,
+    DEFAULT_MAX_NEW_TOKS,
+    DEFAULT_SYSTEM_PROMPT,
+)
 from rag._utils import get_tag_from_dir
 
 
@@ -106,7 +110,8 @@ def load_data(embedding_model_path: str, path_to_db: str) -> tuple[VectorStoreIn
             embedded_options=weaviate.EmbeddedOptions(persistence_data_path=path_to_db)
         )
         weaviate_client.connect()
-    except:
+    except Exception as e:
+        print(f"Try/except past Exception {e}")
         weaviate_client = weaviate.connect_to_local(port=8079, grpc_port=50060)
         print(weaviate_client.is_ready())
 
@@ -126,25 +131,6 @@ def load_data(embedding_model_path: str, path_to_db: str) -> tuple[VectorStoreIn
     return index, results
 
 
-def load_data_chroma(
-    embedding_model_path: str, path_to_db: str
-) -> tuple[VectorStoreIndex, chromadb.GetResult]:
-    if embedding_model_path.startswith("http"):
-        print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
-        embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
-    else:
-        print(f"\nEmbedding model: {embedding_model_path}\n")
-        embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
-    chroma_client = chromadb.PersistentClient(path_to_db)
-    chroma_collection = chroma_client.get_collection(name="documents")
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-    index = VectorStoreIndex.from_vector_store(
-        vector_store,
-        embed_model=embed_model,
-    )
-    return index, chroma_collection.get()
-
-
 def create_retriever(
     index: VectorStoreIndex, cutoff: str, top_k_retriever: int, alpha=0.5, filters=None
 ) -> VectorIndexRetriever:
@@ -154,14 +140,19 @@ def create_retriever(
         filters=filters,
         vector_store_query_mode="hybrid",
         alpha=alpha,
-        # SimilarityPostprocessor not working with weaviate==0.1.0, llama-index-vector-stores-weaviate==1.1.1
+        # SimilarityPostprocessor not working with weaviate==0.1.0,
+        # llama-index-vector-stores-weaviate==1.1.1 See
+        # https://github.com/run-llama/llama_index/issues/14728
         # node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
     )
     return retriever
 
 
 def get_nodes(
-    query: str, retriever: VectorIndexRetriever, reranker: Optional[LLMRerank] = None
+    query: str,
+    retriever: VectorIndexRetriever,
+    reranker: Optional[LLMRerank] = None,
+    cutoff: Optional[float] = None,
 ) -> list[NodeWithScore]:
     """
     Retrieve the most relevant chunks, given the query.
@@ -176,6 +167,18 @@ def get_nodes(
     # Sanity check that the nodes are now sorted in descending order
     scores = [n.score for n in nodes]
     assert sorted(scores) == list(reversed(scores)), f"{sorted(scores)=}, {list(reversed(scores))=}"
+
+    # TODO: @garrett.goon - Delete this hack for filtering nodes based on a cutoff for
+    # weaviate indexes. See https://github.com/run-llama/llama_index/issues/14728
+    print(f"found {len(nodes)=}, {[n.score for n in nodes]}")
+    if cutoff:
+        filtered_nodes = [n for n in nodes if n.score >= args.cutoff]
+        # If no nodes survive the filter, just take the best node left to avoid erroring
+        if filtered_nodes:
+            nodes = filtered_nodes
+        else:
+            print("No node passed the cutoff, using best node")
+            nodes = nodes[:1]
 
     if reranker is not None:
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
@@ -256,7 +259,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--max-new-tokens",
-        default=250,
+        default=DEFAULT_MAX_NEW_TOKS,
         type=int,
         help="Max generation toks",
     )
@@ -294,9 +297,10 @@ if __name__ == "__main__":
         type=str,
         help="Save queries output to csv files under that path.",
     )
+    # https://medium.com/llamaindex-blog/llamaindex-enhancing-retrieval-performance-with-alpha-tuning-in-hybrid-search-in-rag-135d0c9b8a00
     parser.add_argument(
         "--alpha",
-        default=0.5,
+        default=DEFAULT_ALPHA,
         type=float,
         help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
     )
@@ -393,8 +397,9 @@ if __name__ == "__main__":
 
     for tag in tags:
         for query in query_list:
+            # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
             filters = MetadataFilters(
-                filters=[MetadataFilter(key="Tag", value=tag)], condition="or"
+                filters=[MetadataFilter(key="tag", value=tag)], condition="or"
             )
             retriever = create_retriever(
                 index=index,
@@ -403,7 +408,9 @@ if __name__ == "__main__":
                 alpha=args.alpha,
                 filters=filters,
             )
-            nodes = get_nodes(query, retriever, reranker=None)
+            nodes = get_nodes(query, retriever, reranker=None, cutoff=args.cutoff)
+
+            print_references(nodes)
             prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
             output_response = get_llm_answer(llm, prefix, streaming=False)
