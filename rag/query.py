@@ -19,7 +19,7 @@ from llama_index.llms.openllm import OpenLLM
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_SYTEM_PROMPT
+from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_SYSTEM_PROMPT
 from rag._utils import get_tag_from_dir
 
 
@@ -27,7 +27,7 @@ def get_llama3_1_instruct_str(
     query: str,
     nodes: list[NodeWithScore],
     tokenizer: PreTrainedTokenizer,
-    system_prompt: str = DEFAULT_SYTEM_PROMPT,
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
 ) -> str:
     context_str = ""
     for node in nodes:
