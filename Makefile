@@ -1,12 +1,15 @@
-QUERY = "Provide the list of documents with proposals related to the system architecture."
+QUERY = "What is the name of the project?"
 HOSTED_CHAT = "http://llama-3-1-8b.pdk.10.6.39.90.sslip.io/v1"
 HOSTED_EMBED = "http://embedding-model.pdk.10.6.39.90.sslip.io/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
-FOLDER = "Petrobras"
+FOLDER = "NZT"
 OUTPUT_FOLDER = "private/test/query"
 PATH_TO_DB = "private/test/embedded"
 MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+COMBINE_TEXT_UNDER_N_CHARS = "50"
+MAX_CHARACTERS = "500"
+NEW_AFTER_N_CHARS = "500"
 
 .PHONY: install
 install:
@@ -32,11 +35,11 @@ clean:
 
 .PHONY: test-parse
 test-parse:
-	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars 50 --max_characters 1500 --new_after_n_chars 1500
+	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars ${COMBINE_TEXT_UNDER_N_CHARS} --max_characters ${MAX_CHARACTERS} --new_after_n_chars ${NEW_AFTER_N_CHARS}
 
 .PHONY: test-parse-hosted-cleaned
 test-parse-hosted-cleaned:
-	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars 50 --max_characters 1500 --new_after_n_chars 1500 --clean-parse-with-llm --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT}
+	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars ${COMBINE_TEXT_UNDER_N_CHARS} --max_characters ${MAX_CHARACTERS} --new_after_n_chars ${NEW_AFTER_N_CHARS} --clean-parse-with-llm --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT}
 
 .PHONY: test-embed
 test-embed:
