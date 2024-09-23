@@ -3,7 +3,7 @@
 # this script assumes running on M1 Mac
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-DOCKER_IMAGE=garrettgoon/rag-pdf-v0.0.1
+DOCKER_IMAGE=garrettgoon/rag-pdf-$(git rev-parse --short HEAD)
 
 echo "Running docker buildx build --platform linux/amd64 . -t $DOCKER_IMAGE --no-cache"
 
