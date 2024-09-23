@@ -80,7 +80,6 @@ def parse(
     output_list = elements_to_rag_schema(elements, tag=tag)
     input_file_path = Path(input_file)
 
-    print(f"{input_file_path=} {input_file_path.parent=}, {input_file_path.stem + '.json'=}")
     output_path = Path(os.path.join(output, input_file_path.stem + ".json"))
     if not output_path.parent.exists():
         print(f"Creating {input_file_path.parent.absolute()=}")
