@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional
 
@@ -24,7 +25,10 @@ from rag.rag_schema import DataElement, DataType, Document, Metadata
 def elements_to_rag_schema(elements: list, tag=None) -> list[DataElement]:
     output_list = Document()
     for element in elements:
-        el = element.to_dict()
+        if isinstance(element, dict):
+            el = deepcopy(element)
+        else:
+            el = element.to_dict()
         if "url" in el["metadata"]:
             source = el["metadata"]["url"]
         elif "filename" in el["metadata"]:
@@ -83,6 +87,7 @@ def parse(
         os.makedirs(output_path.parent.absolute())
     with open(output_path, "w") as f:
         logger.info(f"Writing output to {output_path}")
+        print(f"parse results = {output_list[0]['metadata']}")
         json.dump(output_list, f, indent=4)
 
 
@@ -116,7 +121,7 @@ def clean_parsed(json_file, llm, tokenizer):
             uninformative = generate_completion(
                 llm, tokenizer, UNINFORMATIVE_PROMPT.format(context=text)
             ).text
-            if uninformative == "no":
+            if uninformative == "yes":
                 print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
                 print(text)
                 print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
@@ -129,6 +134,7 @@ def clean_parsed(json_file, llm, tokenizer):
                 print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
+    print(f"clean_parse results = {results[0]['metadata']}")
     with open(json_file, "w") as f:
         json.dump(results, f, indent=4)
 

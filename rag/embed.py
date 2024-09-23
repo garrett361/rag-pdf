@@ -119,7 +119,7 @@ if __name__ == "__main__":
         )
         weaviate_client.connect()
     except Exception as e:
-        print(f"Hit exception {e}")
+        print(f"Try/except past Exception {e}")
         weaviate_client = weaviate.connect_to_local(port=8079, grpc_port=50060)
         print(weaviate_client.is_ready())
 
