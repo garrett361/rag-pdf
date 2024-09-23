@@ -14,6 +14,7 @@ DEFAULT_MAX_EMBED_BSZ = 32
 DEFAULT_MAX_NEW_TOKS = 500
 UNINFORMATIVE_PROMPT = dedent("""
 Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
+
 {context}
 
 Only respond with "yes" or "no".
