@@ -321,8 +321,8 @@ if __name__ == "__main__":
     index, chunks = load_data(args.embedding_model_path, args.path_to_db)
 
     all_tags = []
-    for i in range(len(chunks)):
-        eltags = chunks[i].properties["tag"]
+    for c in chunks:
+        eltags = c.properties["tag"]
         if eltags not in all_tags:
             all_tags.append(eltags)
     print("\nAll tags found: " + str(all_tags) + "\n")
