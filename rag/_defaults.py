@@ -12,13 +12,12 @@ If you don't know the answer, just say "I do not know." Don't make up an answer.
 # The embedding model hosted on houston errors out at larger batch sizes
 DEFAULT_MAX_EMBED_BSZ = 32
 DEFAULT_MAX_NEW_TOKS = 500
-DEFAULT_ALPHA = 0.95
+DEFAULT_ALPHA = 0.2
 UNINFORMATIVE_PROMPT = dedent("""
-Below is a text extract from a document. I will ask you whether the extract looks informative.
+Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
+{context}
 
-Extract: {context}
-
-Headers, footers, and tables of contents are examples of non-informative extracts. Does the above extract look uninformative? Only respond with "yes" or "no".
+Only respond with "yes" or "no".
 """).strip("\n")
 
 QA_PROMPT = dedent("""

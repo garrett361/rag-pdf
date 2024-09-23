@@ -1,15 +1,15 @@
-QUERY = "What is the name of the project?"
-HOSTED_CHAT = "http://llama-3-1-8b.pdk.10.6.39.90.sslip.io/v1"
-HOSTED_EMBED = "http://embedding-model.pdk.10.6.39.90.sslip.io/v1"
+QUERY = "What are the plan location conditions?"
+HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
+HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
-FOLDER = "NZT"
+FOLDER = "Petrobras"
 OUTPUT_FOLDER = "private/test/query"
 PATH_TO_DB = "private/test/embedded"
 MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-COMBINE_TEXT_UNDER_N_CHARS = "50"
-MAX_CHARACTERS = "500"
-NEW_AFTER_N_CHARS = "500"
+MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+COMBINE_TEXT_UNDER_N_CHARS = "200"
+MAX_CHARACTERS = "1500"
+NEW_AFTER_N_CHARS = "1500"
 
 .PHONY: install
 install:
