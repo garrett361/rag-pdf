@@ -8,7 +8,15 @@ from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
 from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_MAX_NEW_TOKS
+from rag._defaults import (
+    DEFAULT_CUTOFF,
+    DEFAULT_HF_CHAT_MODEL,
+    DEFAULT_HF_EMBED_MODEL,
+    DEFAULT_MAX_NEW_TOKS,
+    DEFAULT_TEMP,
+    DEFAULT_TOP_K_RETRIEVER,
+    DEFAULT_TOP_P,
+)
 from rag.query import (
     create_retriever,
     get_llama3_1_instruct_str,
@@ -42,7 +50,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--top-k-retriever",
-    default=5,
+    default=DEFAULT_TOP_K_RETRIEVER,
     type=int,
     help="top k for retreiver",
 )
@@ -54,7 +62,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--cutoff",
-    default=0.7,
+    default=DEFAULT_CUTOFF,
     type=float,
     help="cutoff for similarity score",
 )
@@ -98,9 +106,9 @@ st.markdown(
 
 st.header("Retrieval Augmented Generation (RAG) Demo Q&A", divider="gray")
 
-st.session_state.temp = 0.2
-st.session_state.top_p = 0.8
-st.session_state.max_length = 250
+st.session_state.temp = DEFAULT_TEMP
+st.session_state.top_p = DEFAULT_TOP_P
+st.session_state.max_length = DEFAULT_MAX_NEW_TOKS
 st.session_state.cutoff = args.cutoff
 st.session_state.top_k_retriever = args.top_k_retriever
 
@@ -155,9 +163,9 @@ with st.spinner(f"Loading data and {args.embedding_model_path} embedding model..
 tags = []
 uploaded_files = {}
 filters = None
-for i in range(len(chunks["ids"])):
-    file = chunks["metadatas"][i]["Source"]
-    eltags = chunks["metadatas"][i]["Tag"]
+for c in chunks:
+    file = c.properties["source"]
+    eltags = c.properties["tag"]
     if eltags not in tags:
         tags.append(eltags)
     if eltags not in uploaded_files:
@@ -177,7 +185,8 @@ def list_sources():
                 files = uploaded_files[tag]
                 for file in files:
                     st.write(file)
-            meta_filters.append(MetadataFilter(key="Tag", value=tag))
+            # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
+            meta_filters.append(MetadataFilter(key="tag", value=tag))
         filters = MetadataFilters(
             filters=meta_filters,
             condition="or",
