@@ -110,7 +110,9 @@ def load_data(
     return index, chroma_collection.get()
 
 
-def create_retriever(cutoff: float, top_k_retriever: int, filters=None) -> VectorIndexRetriever:
+def create_retriever(
+    index: VectorStoreIndex, cutoff: float, top_k_retriever: int, filters=None
+) -> VectorIndexRetriever:
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=top_k_retriever,
@@ -135,12 +137,35 @@ def get_nodes(
     return nodes
 
 
-def get_llm_answer(llm, tag, args, query_list=None):
+def get_llm_answer(
+    llm,
+    prefix: str,
+    streaming: bool = False,
+) -> str:
+    output_response = (
+        llm.stream_complete(prefix, formatted=True) if streaming else llm.complete(prefix)
+    )
+    return output_response
+
+
+def get_llm_answer2(
+    llm,
+    tokenizer: PreTrainedTokenizer,
+    index: VectorStoreIndex,
+    tag: str,
+    cutoff: float,
+    top_k_retriever: int,
+    query: Optional[str] = None,
+    query_list: Optional[list[str]] = None,
+    output_folder: Optional[str] = None,
+    folder: Optional[str] = None,
+    reranker: Optional[LLMRerank] = None,
+) -> str:
     filters = None
     filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
 
     retriever = create_retriever(
-        cutoff=args.cutoff, top_k_retriever=args.top_k_retriever, filters=filters
+        index=index, cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters
     )
 
     d = {}
@@ -148,7 +173,7 @@ def get_llm_answer(llm, tag, args, query_list=None):
     d["Answers"] = []
     d["Main Source"] = []
 
-    query_list = query_list or [args.query]
+    query_list = query_list or [query]
     d["Queries"] = query_list
 
     for q in query_list:
@@ -164,18 +189,20 @@ def get_llm_answer(llm, tag, args, query_list=None):
             nodes[0].node.metadata["Source"] + ", page " + str(nodes[0].node.metadata["PageNumber"])
         )
 
-    if args.output_folder:
+    if output_folder:
         output_df = pd.DataFrame(data=d)
 
         suffix = "all_documents_mixed"
         if tag:
             suffix = tag
-        elif args.folder:
-            suffix = args.folder
+        elif folder:
+            suffix = folder
 
         xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
         print("Saving output to " + xlsx_name)
         output_df.to_excel(xlsx_name, index=False)
+
+    return output_response.text
 
 
 def print_references(nodes):
@@ -331,11 +358,10 @@ if __name__ == "__main__":
         print(args.output_folder + " does not exist yet, creating it...")
         os.makedirs(args.output_folder)
 
-    # Get the list of queries from the queries file
-    query_list = None
+    # Get the list of queries from the queries file or the query arg
     if args.query_file:
         print("Using " + args.query_file + " as query list")
-        
+
         if args.query_file[-4:] == ".txt":
             query_file = open(args.query_file, "r")
             query_lines = query_file.readlines()
@@ -349,17 +375,63 @@ if __name__ == "__main__":
             query_list = [q for q in query_df[0]]
         else:
             print("Format of query file not supported")
+    else:
+        query_list = [args.query]
 
-    # Loop though all folders if wanting to get query answers for all docs
+    # Filter by the provided tag or loop over all tags
     if args.folder:
-        tag = get_tag_from_dir(args.folder)
+        tags = [get_tag_from_dir(args.folder)]
+    else:
+        tags = all_tags
+
+    # Sanity check
+    for tag in tags:
         if tag not in all_tags:
             raise ValueError(
                 f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
             )
-        print("\n\nApply query to " + tag + " folder only")
-        get_llm_answer(llm, tag, args, query_list)
-    else:
-        for tag in all_tags:
+
+    # Tracking results
+    d = {}
+    d["Queries"] = []
+    d["Answers"] = []
+    d["Main Source"] = []
+
+    d["Queries"] = query_list
+
+    for tag in tags:
+        for query in query_list:
+            filters = MetadataFilters(
+                filters=[MetadataFilter(key="Tag", value=tag)], condition="or"
+            )
+            retriever = create_retriever(
+                index=index,
+                cutoff=args.cutoff,
+                top_k_retriever=args.top_k_retriever,
+                filters=filters,
+            )
+            nodes = get_nodes(query, retriever, reranker=None)
+            prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
-            get_llm_answer(llm, tag, args, query_list)
+            output_response = get_llm_answer(llm, prefix, streaming=False)
+            print(f"\n{query=}, {tag=}, {output_response.text=}\n")
+
+            d["Answers"].append(output_response.text)
+            d["Main Source"].append(
+                nodes[0].node.metadata["Source"]
+                + ", page "
+                + str(nodes[0].node.metadata["PageNumber"])
+            )
+
+    if args.output_folder:
+        output_df = pd.DataFrame(data=d)
+
+        suffix = "all_documents_mixed"
+        if tag:
+            suffix = tag
+        elif args.folder:
+            suffix = args.folder
+
+        xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
+        print("Saving output to " + xlsx_name)
+        output_df.to_excel(xlsx_name, index=False)
