@@ -4,5 +4,5 @@ WORKDIR /app
 
 COPY pyproject.toml ./
 
-COPY rag/ ./
+COPY . .
 RUN pip install -e .
