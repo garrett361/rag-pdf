@@ -11,7 +11,7 @@ If you don't know the answer, just say "I do not know." Don't make up an answer.
 """).strip("\n")
 # The embedding model hosted on houston errors out at larger batch sizes
 DEFAULT_MAX_EMBED_BSZ = 32
-DEFAULT_MAX_NEW_TOKS = 500
+DEFAULT_MAX_NEW_TOKS = 1024
 DEFAULT_ALPHA = 0.2
 UNINFORMATIVE_PROMPT = dedent("""
 Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
