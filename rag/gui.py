@@ -310,7 +310,9 @@ if prompt := input_container.chat_input("Say something..."):
         prompt, retriever, reranker=st.session_state.reranker, cutoff=st.session_state.cutoff
     )
     if st.session_state.top_k_reranker:
-        assert len(nodes) <= st.session_state.top_k_reranker
+        assert (
+            len(nodes) <= st.session_state.top_k_reranker
+        ), f"{len(nodes)=}, {st.session_state.top_k_reranker=}"
     prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer, st.session_state.system_prompt)
     response = get_llm_answer(Settings.llm, prefix, args.streaming)
     with chat_container.chat_message(
