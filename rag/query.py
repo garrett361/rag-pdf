@@ -1,5 +1,6 @@
 import argparse
 import os
+from copy import deepcopy
 from pprint import pprint
 from textwrap import dedent
 from typing import Optional
@@ -30,6 +31,24 @@ from rag._defaults import (
     DEFAULT_TOP_P,
 )
 from rag._utils import get_tag_from_dir
+
+
+class QuestionAnsweredNodePostprocessor(BaseNodePostprocessor):
+    """
+    Creates new nodes with the question answered by the extract appended
+    """
+
+    def _postprocess_nodes(
+        self, nodes: list[NodeWithScore], query_bundle: Optional[QueryBundle]
+    ) -> list[NodeWithScore]:
+        # subtracts 1 from the score
+        copied_nodes = [deepcopy(n) for n in nodes]
+        for cn in copied_nodes:
+            cn.node.text += (
+                f"\n\nQuestion answered by above extract: {cn.metadata['QuestionAnswered']}"
+            )
+
+        return copied_nodes
 
 
 def get_llama3_1_instruct_str(
@@ -186,13 +205,21 @@ def get_nodes(
 
     if reranker is not None:
         print("------------------\n\n")
-        print(f"Reranking {len(nodes)} nodes {[n.node.id_ for n in nodes]=} ")
-        print_references(nodes)
+        print(f"Reranking {len(nodes)} nodes ")
         print("\n\n------------------")
-        nodes = reranker.postprocess_nodes(nodes, query_bundle)
+        # Append the generated question to the node text prior to re-ranking so that the re-ranker
+        # has additional, hopefully relevant text to match against.
+        question_appended_nodes = QuestionAnsweredNodePostprocessor().postprocess_nodes(
+            nodes, query_bundle
+        )
+        filtered_nodes = reranker.postprocess_nodes(question_appended_nodes, query_bundle)
+        filtered_node_ids = {fn.node.id_ for fn in filtered_nodes}
+        # Then return the original nodes without the question appended, so that generation does not
+        # rely on additional info not preset in the original chunks.
+        nodes = [n for n in nodes if n.node.id_ in filtered_node_ids]
+
         print("------------------\n\n")
         print(f"After reranking, {len(nodes)} nodes: {[n.node.id_ for n in nodes]=} ")
-        print_references(nodes)
         print("\n\n------------------")
 
     # print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
@@ -430,6 +457,7 @@ if __name__ == "__main__":
                 filters=filters,
             )
             nodes = get_nodes(query, retriever, reranker=reranker, cutoff=args.cutoff)
+            print_references(nodes)
 
             prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
