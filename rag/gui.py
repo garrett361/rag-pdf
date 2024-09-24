@@ -4,6 +4,7 @@ import pathlib
 
 import streamlit as st
 from llama_index.core import Settings
+from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
 from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer
@@ -85,8 +86,16 @@ parser.add_argument(
     type=float,
     help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
 )
+parser.add_argument(
+    "--top-k-reranker",
+    default=None,
+    type=int,
+    help="top k results for reranker",
+)
 parser.add_argument("--streaming", help="stream responses", action="store_true")
 args = parser.parse_args()
+if args.top_k_reranker and args.top_k_reranker > args.top_k_retriever:
+    raise ValueError("top_k_reranker, if provided, must be smaller than top_k_retriever.")
 
 st.set_page_config(layout="wide", page_title="Retrieval Augmented Generation (RAG) Demo Q&A")
 
@@ -133,6 +142,8 @@ if "alpha" not in st.session_state:
     st.session_state.temp = args.temp
     st.session_state.top_k_retriever = args.top_k_retriever
     st.session_state.top_p = args.top_p
+    st.session_state.reranker = None
+    st.session_state.top_k_reranker = args.top_k_reranker
 
 tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
@@ -166,6 +177,11 @@ def load_chat_model(
             generate_kwargs=generate_kwargs,
         )
         st.write(f"Using local model: {args.model_name}")
+    st.session_state.reranker = (
+        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=args.top_k_reranker)
+        if args.top_k_reranker
+        else None
+    )
 
 
 welcome_message = "Hello, I am ABB Document chat. \n\n Please ask me any questions related to the documents listed below. If there are no documents listed, please select a tag below to filter."
@@ -290,13 +306,16 @@ if prompt := input_container.chat_input("Say something..."):
     with chat_container.chat_message("user"):
         st.write(prompt)
 
-    print(f"{args.cutoff=}, {st.session_state.cutoff=}")
-    nodes = get_nodes(prompt, retriever, reranker=None, cutoff=st.session_state.cutoff)
+    nodes = get_nodes(
+        prompt, retriever, reranker=st.session_state.reranker, cutoff=st.session_state.cutoff
+    )
+    if st.session_state.top_k_reranker:
+        assert len(nodes) <= st.session_state.top_k_reranker
     prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer, st.session_state.system_prompt)
-    print(f"Querying with prompt: {prompt}")
-    nodes = get_nodes(prompt, retriever, reranker=None)
     response = get_llm_answer(Settings.llm, prefix, args.streaming)
-    with chat_container.chat_message("assistant", avatar=str(static_path.joinpath("ABB_Logo.jpeg"))):
+    with chat_container.chat_message(
+        "assistant", avatar=str(static_path.joinpath("ABB_Logo.jpeg"))
+    ):
         if args.streaming:
             st.write_stream(output_stream(response))
         else:
@@ -327,3 +346,5 @@ if prompt := input_container.chat_input("Say something..."):
             if not title.startswith("http"):
                 col2.write(out_link)
             col2.divider()
+
+st.write(st.session_state)

@@ -1,7 +1,8 @@
 QUERY = "What is the plant composition?"
 # HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 HOSTED_CHAT = "http://llama-3-1-8b.pdk.10.6.39.90.sslip.io/v1"
-HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
+# HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
+HOSTED_EMBED = "http://embedding-model.pdk.10.6.39.90.sslip.io/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
 FOLDER = "Petrobras"
 OUTPUT_FOLDER = "private/test/query"
@@ -87,3 +88,7 @@ test-hosted:
 .PHONY: test-ui-hosted
 test-ui-hosted:
 	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --embedding_model_path ${HOSTED_EMBED} --chat-model-endpoint ${HOSTED_CHAT} --streaming
+
+.PHONY: test-ui-hosted-reranker
+test-ui-hosted-reranker:
+	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --embedding_model_path ${HOSTED_EMBED} --chat-model-endpoint ${HOSTED_CHAT} --streaming --top-k-reranker 4
