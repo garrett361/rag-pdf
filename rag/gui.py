@@ -346,5 +346,3 @@ if prompt := input_container.chat_input("Say something..."):
             if not title.startswith("http"):
                 col2.write(out_link)
             col2.divider()
-
-st.write(st.session_state)
