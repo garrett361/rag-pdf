@@ -89,7 +89,6 @@ def parse(
         os.makedirs(output_path.parent.absolute())
     with open(output_path, "w") as f:
         logger.info(f"Writing output to {output_path}")
-        print(f"parse results = {output_list[0]['metadata']}")
         json.dump(output_list, f, indent=4)
 
 
@@ -137,7 +136,6 @@ def clean_parsed(json_file, llm, tokenizer):
                 # print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
-    print(f"clean_parse results = {results[0]['metadata']}")
     with open(json_file, "w") as f:
         json.dump(results, f, indent=4)
 
