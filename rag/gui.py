@@ -14,6 +14,7 @@ from rag._defaults import (
     DEFAULT_HF_CHAT_MODEL,
     DEFAULT_HF_EMBED_MODEL,
     DEFAULT_MAX_NEW_TOKS,
+    DEFAULT_SYSTEM_PROMPT,
     DEFAULT_TEMP,
     DEFAULT_TOP_K_RETRIEVER,
     DEFAULT_TOP_P,
@@ -124,12 +125,14 @@ st.markdown(
 
 st.header("Retrieval Augmented Generation (RAG) Demo Q&A", divider="gray")
 
-st.session_state.alpha = args.alpha
-st.session_state.cutoff = args.cutoff
-st.session_state.max_length = args.max_new_tokens
-st.session_state.temp = args.temp
-st.session_state.top_k_retriever = args.top_k_retriever
-st.session_state.top_p = args.top_p
+# Use alpha as a guard for all session_state elements
+if "alpha" not in st.session_state:
+    st.session_state.alpha = args.alpha
+    st.session_state.cutoff = args.cutoff
+    st.session_state.max_length = args.max_new_tokens
+    st.session_state.temp = args.temp
+    st.session_state.top_k_retriever = args.top_k_retriever
+    st.session_state.top_p = args.top_p
 
 tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
@@ -270,11 +273,17 @@ def output_stream(llm_stream):
 
 
 with col1.expander("Settings"):
-    temp = st.slider("Temperature", 0.0, 1.0, key="temp")
-    top_k_retriever = st.slider("Top K (Retriever)", 1, 25, key="top_k_retriever")
-    cutoff = st.slider("Cutoff", 0.0, 1.0, key="cutoff")
-    instructions = st.text_area("Prompt Instructions", default_instructions)
+    st.slider("Temperature", 0.0, 1.0, key="temp")
+    st.slider("Top K (Retriever)", 1, 25, key="top_k_retriever")
+    st.slider("Cutoff", 0.0, 1.0, key="cutoff")
+    st.slider("Alpha", 0.0, 1.0, key="alpha")
+    st.slider("Top P (Chat)", 0.0, 1.0, key="top_p")
+    st.slider("Max New Tokens", 250, 2048, key="max_length")
+    st.text_area("Prompt Instructions", DEFAULT_SYSTEM_PROMPT, key="system_prompt")
     st.button("Update Settings", on_click=reload())
+
+# st.write(st.session_state)
+
 
 # Accept user input
 if prompt := input_container.chat_input("Say something..."):
@@ -283,7 +292,7 @@ if prompt := input_container.chat_input("Say something..."):
 
     print(f"{args.cutoff=}, {st.session_state.cutoff=}")
     nodes = get_nodes(prompt, retriever, reranker=None, cutoff=st.session_state.cutoff)
-    prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer)
+    prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer, st.session_state.system_prompt)
     print(f"Querying with prompt: {prompt}")
     nodes = get_nodes(prompt, retriever, reranker=None)
     response = get_llm_answer(Settings.llm, prefix, args.streaming)
