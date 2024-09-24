@@ -417,7 +417,7 @@ if __name__ == "__main__":
             nodes = get_nodes(query, retriever, reranker=None, cutoff=args.cutoff)
 
             print_references(nodes)
-            prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
+            prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
             output_response = get_llm_answer(llm, prefix, streaming=False)
             print(f"\n{query=}, {tag=}, {output_response.text=}\n")
