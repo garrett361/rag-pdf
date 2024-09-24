@@ -124,7 +124,7 @@ st.markdown(
 st.markdown(
     """
     <div class="top-bar">
-         <img src="app/static/hpe_pri_wht_rev_rgb.png" alt="HPE Logo" height="55">
+         <img src="app/static/abb_logo_white.png" alt="ABB Logo" height="55">
     </div>
     """,
     unsafe_allow_html=True,
