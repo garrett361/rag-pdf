@@ -1,6 +1,7 @@
 import argparse
 import os
 import pathlib
+from typing import Optional
 
 import streamlit as st
 from llama_index.core import Settings
@@ -134,6 +135,16 @@ st.markdown(
 
 st.header("Retrieval Augmented Generation (RAG) Demo Q&A", divider="gray")
 
+
+def get_reranker(top_k_reranker: Optional[int]):
+    reranker = (
+        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=top_k_reranker)
+        if top_k_reranker
+        else None
+    )
+    return reranker
+
+
 # Use alpha as a guard for all session_state elements
 if "alpha" not in st.session_state:
     st.session_state.alpha = args.alpha
@@ -142,8 +153,8 @@ if "alpha" not in st.session_state:
     st.session_state.temp = args.temp
     st.session_state.top_k_retriever = args.top_k_retriever
     st.session_state.top_p = args.top_p
-    st.session_state.reranker = None
     st.session_state.top_k_reranker = args.top_k_reranker
+    st.session_state.reranker = get_reranker(args.top_k_reranker)
 
 tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
@@ -177,11 +188,7 @@ def load_chat_model(
             generate_kwargs=generate_kwargs,
         )
         st.write(f"Using local model: {args.model_name}")
-    st.session_state.reranker = (
-        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=args.top_k_reranker)
-        if args.top_k_reranker
-        else None
-    )
+    st.session_state.reranker = get_reranker(st.session_state.top_k_reranker)
 
 
 welcome_message = "Hello, I am ABB Document chat. \n\n Please ask me any questions related to the documents listed below. If there are no documents listed, please select a tag below to filter."
@@ -306,8 +313,6 @@ if prompt := input_container.chat_input("Say something..."):
     with chat_container.chat_message("user"):
         st.write(prompt)
 
-    if args.top_k_reranker is not None:
-        assert st.session_state.reranker is not None
     nodes = get_nodes(
         prompt, retriever, reranker=st.session_state.reranker, cutoff=st.session_state.cutoff
     )
