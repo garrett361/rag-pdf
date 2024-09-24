@@ -9,6 +9,7 @@ PATH_TO_DB = "private/test/embedded"
 MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 # MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
 MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+QUERY_FILE = "test_queries.txt"
 
 .PHONY: install
 install:
@@ -59,11 +60,15 @@ test-query-hosted:
 
 .PHONY: test-query-hosted-rerank
 test-query-hosted-rerank:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --top-k-reranker 3
+	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --top-k-reranker 4
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:
-	python -m rag.query --query-file test_queries.txt --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER}
+	python -m rag.query --query-file ${QUERY_FILE} --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER}
+
+.PHONY: test-query-file-hosted-rerank
+test-query-file-hosted-rerank:
+	python -m rag.query --query-file ${QUERY_FILE} --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER} --top-k-reranker 4
 
 .PHONY: test
 test:
