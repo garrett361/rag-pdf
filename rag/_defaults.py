@@ -11,4 +11,25 @@ If you don't know the answer, just say "I do not know." Don't make up an answer.
 """).strip("\n")
 # The embedding model hosted on houston errors out at larger batch sizes
 DEFAULT_MAX_EMBED_BSZ = 32
-DEFAULT_MAX_NEW_TOKS = 500
+DEFAULT_MAX_NEW_TOKS = 1024
+DEFAULT_TOP_P = 0.9
+DEFAULT_ALPHA = 0.2
+DEFAULT_TEMP = 0.2
+DEFAULT_CUTOFF = 0.1
+DEFAULT_TOP_K_RETRIEVER = 5
+DEFAULT_COMBINE_TEXT_UNDER_N_CHARS = 200
+DEFAULT_MAX_CHARACTERS = 1500
+DEFAULT_NEW_AFTER_N_CHARS = 1500
+UNINFORMATIVE_PROMPT = dedent("""
+Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
+{context}
+
+Only respond with "yes" or "no".
+""").strip("\n")
+
+QA_PROMPT = dedent("""
+Generate the main question that is answered by the information provided in the passage below.  Ignore weird formatting or characters that look out of place.
+{context}
+
+Only respond with the question.
+""").strip("\n")

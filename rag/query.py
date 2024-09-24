@@ -4,11 +4,10 @@ from pprint import pprint
 from textwrap import dedent
 from typing import Optional
 
-import chromadb
 import pandas as pd
 import torch
 from llama_index.core import VectorStoreIndex
-from llama_index.core.postprocessor import LLMRerank, SimilarityPostprocessor
+from llama_index.core.postprocessor import LLMRerank
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
@@ -16,10 +15,19 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.llms.openllm import OpenLLM
-from llama_index.vector_stores.chroma import ChromaVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_SYSTEM_PROMPT
+from rag._defaults import (
+    DEFAULT_ALPHA,
+    DEFAULT_CUTOFF,
+    DEFAULT_HF_CHAT_MODEL,
+    DEFAULT_HF_EMBED_MODEL,
+    DEFAULT_MAX_NEW_TOKS,
+    DEFAULT_SYSTEM_PROMPT,
+    DEFAULT_TEMP,
+    DEFAULT_TOP_K_RETRIEVER,
+    DEFAULT_TOP_P,
+)
 from rag._utils import get_tag_from_dir
 
 
@@ -35,13 +43,12 @@ def get_llama3_1_instruct_str(
         context_str += node.text.replace("\n", "  \n")
     # print(f"\nUsing {context_str=}\n")
 
-    # https://huggingface.co/blog/not-lain/rag-chatbot-using-llama3
     context_and_query = f"""
-Context information is below.
+ Please use the context provided below to answer the associated questions.
 ---------------------
 {context_str}
 ---------------------
-Given the context information and not prior knowledge, answer the query.
+
 Query: {query}
 Answer:
     """
@@ -91,49 +98,95 @@ def get_local_llm(
     return llm
 
 
-def load_data(
-    embedding_model_path: str, path_to_db: str
-) -> tuple[VectorStoreIndex, chromadb.GetResult]:
+def load_data(embedding_model_path: str, path_to_db: str) -> tuple[VectorStoreIndex, dict]:
     if embedding_model_path.startswith("http"):
         print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
     else:
         print(f"\nEmbedding model: {embedding_model_path}\n")
         embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
-    chroma_client = chromadb.PersistentClient(path_to_db)
-    chroma_collection = chroma_client.get_collection(name="documents")
-    vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+    import weaviate
+    from llama_index.vector_stores.weaviate import WeaviateVectorStore
+
+    try:
+        weaviate_client = weaviate.WeaviateClient(
+            embedded_options=weaviate.EmbeddedOptions(persistence_data_path=path_to_db)
+        )
+        weaviate_client.connect()
+    except Exception as e:
+        print(f"Try/except past Exception {e}")
+        weaviate_client = weaviate.connect_to_local(port=8079, grpc_port=50060)
+        print(weaviate_client.is_ready())
+
+    vector_store = WeaviateVectorStore(weaviate_client=weaviate_client, index_name="Documents")
+
     index = VectorStoreIndex.from_vector_store(
         vector_store,
         embed_model=embed_model,
     )
-    return index, chroma_collection.get()
+
+    # Fetch all objects from the Weaviate class
+    collection = weaviate_client.collections.get("Documents")
+    results = []
+    for item in collection.iterator():
+        results.append(item)
+
+    return index, results
 
 
 def create_retriever(
-    index: VectorStoreIndex, cutoff: float, top_k_retriever: int, filters=None
+    index: VectorStoreIndex, cutoff: str, top_k_retriever: int, alpha=0.5, filters=None
 ) -> VectorIndexRetriever:
     retriever = VectorIndexRetriever(
         index=index,
         similarity_top_k=top_k_retriever,
         filters=filters,
-        node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
+        vector_store_query_mode="hybrid",
+        alpha=alpha,
+        # SimilarityPostprocessor not working with weaviate==0.1.0,
+        # llama-index-vector-stores-weaviate==1.1.1 See
+        # https://github.com/run-llama/llama_index/issues/14728
+        # node_postprocessors=[SimilarityPostprocessor(similarity=cutoff)],
     )
     return retriever
 
 
 def get_nodes(
-    query: str, retriever: VectorIndexRetriever, reranker: Optional[LLMRerank] = None
+    query: str,
+    retriever: VectorIndexRetriever,
+    reranker: Optional[LLMRerank] = None,
+    cutoff: Optional[float] = None,
 ) -> list[NodeWithScore]:
     """
     Retrieve the most relevant chunks, given the query.
     """
     # Wrap in a QueryBundle class in order to use reranker.
+    # NOTE: @garrett.goon - Liam tried wrapping with query_str below, but found it didn't help.
+    # query_str = f"Represent this sentence for searching relevant passages: {query}"
     query_bundle = QueryBundle(query)
     nodes = retriever.retrieve(query_bundle)
+    # Weaviate returns nodes in reversed relevant order
+    nodes = nodes[::-1]
+    # Sanity check that the nodes are now sorted in descending order
+    scores = [n.score for n in nodes]
+    assert sorted(scores) == list(reversed(scores)), f"{sorted(scores)=}, {list(reversed(scores))=}"
+
+    # TODO: @garrett.goon - Delete this hack for filtering nodes based on a cutoff for
+    # weaviate indexes. See https://github.com/run-llama/llama_index/issues/14728
+    if cutoff:
+        filtered_nodes = [n for n in nodes if n.score >= cutoff]
+        # If no nodes survive the filter, just take the best node left to avoid erroring
+        if filtered_nodes:
+            nodes = filtered_nodes
+        else:
+            print("No node passed the cutoff, using best node")
+            nodes = nodes[:1]
 
     if reranker is not None:
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
+
+    print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
     return nodes
 
 
@@ -148,72 +201,13 @@ def get_llm_answer(
     return output_response
 
 
-def get_llm_answer2(
-    llm,
-    tokenizer: PreTrainedTokenizer,
-    index: VectorStoreIndex,
-    tag: str,
-    cutoff: float,
-    top_k_retriever: int,
-    query: Optional[str] = None,
-    query_list: Optional[list[str]] = None,
-    output_folder: Optional[str] = None,
-    folder: Optional[str] = None,
-    reranker: Optional[LLMRerank] = None,
-) -> str:
-    filters = None
-    filters = MetadataFilters(filters=[MetadataFilter(key="Tag", value=tag)], condition="or")
-
-    retriever = create_retriever(
-        index=index, cutoff=cutoff, top_k_retriever=top_k_retriever, filters=filters
-    )
-
-    d = {}
-    d["Queries"] = []
-    d["Answers"] = []
-    d["Main Source"] = []
-
-    query_list = query_list or [query]
-    d["Queries"] = query_list
-
-    for q in query_list:
-        print("\nQuery: " + q)
-        nodes = get_nodes(q, retriever, reranker)
-        prefix = get_llama3_1_instruct_str(q, nodes, tokenizer)
-
-        output_response = llm.complete(prefix)
-        print(f"{output_response.text=}\n")
-
-        d["Answers"].append(output_response.text)
-        d["Main Source"].append(
-            nodes[0].node.metadata["Source"] + ", page " + str(nodes[0].node.metadata["PageNumber"])
-        )
-
-    if output_folder:
-        output_df = pd.DataFrame(data=d)
-
-        suffix = "all_documents_mixed"
-        if tag:
-            suffix = tag
-        elif folder:
-            suffix = folder
-
-        xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
-        print("Saving output to " + xlsx_name)
-        output_df.to_excel(xlsx_name, index=False)
-
-    return output_response.text
-
-
 def print_references(nodes):
     # TODO: @garrett.goon - Delete below, just for debugging/visuals
     print("\n **** REFERENCES **** \n")
-    for n in nodes[0:1]:
+    for n in nodes[0:5]:
         title = n.node.metadata["Source"]
-        page = n.node.metadata["Page Number"]
+        page = n.node.metadata["PageNumber"]
         text = n.node.text
-        commit = n.node.metadata["Commit"]
-        doctag = n.node.metadata["Tag"]
         newtext = text.encode("unicode_escape").decode("unicode_escape")
         out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((n.score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
@@ -246,7 +240,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--top-k-retriever",
-        default=5,
+        default=DEFAULT_TOP_K_RETRIEVER,
         type=int,
         help="top k results for retriever",
     )
@@ -258,25 +252,25 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--temp",
-        default=0.2,
+        default=DEFAULT_TEMP,
         type=float,
         help="Generation temp",
     )
     parser.add_argument(
         "--top-p",
-        default=0.9,
+        default=DEFAULT_TOP_P,
         type=float,
         help="top p probability for generation",
     )
     parser.add_argument(
         "--max-new-tokens",
-        default=250,
+        default=DEFAULT_MAX_NEW_TOKS,
         type=int,
         help="Max generation toks",
     )
     parser.add_argument(
         "--cutoff",
-        default=0.6,
+        default=DEFAULT_CUTOFF,
         type=float,
         help="Filter out docs with score below cutoff.",
     )
@@ -308,6 +302,13 @@ if __name__ == "__main__":
         type=str,
         help="Save queries output to csv files under that path.",
     )
+    # https://medium.com/llamaindex-blog/llamaindex-enhancing-retrieval-performance-with-alpha-tuning-in-hybrid-search-in-rag-135d0c9b8a00
+    parser.add_argument(
+        "--alpha",
+        default=DEFAULT_ALPHA,
+        type=float,
+        help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
+    )
 
     args = parser.parse_args()
 
@@ -325,8 +326,8 @@ if __name__ == "__main__":
     index, chunks = load_data(args.embedding_model_path, args.path_to_db)
 
     all_tags = []
-    for i in range(len(chunks["ids"])):
-        eltags = chunks["metadatas"][i]["Tag"]
+    for c in chunks:
+        eltags = c.properties["tag"]
         if eltags not in all_tags:
             all_tags.append(eltags)
     print("\nAll tags found: " + str(all_tags) + "\n")
@@ -401,16 +402,20 @@ if __name__ == "__main__":
 
     for tag in tags:
         for query in query_list:
+            # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
             filters = MetadataFilters(
-                filters=[MetadataFilter(key="Tag", value=tag)], condition="or"
+                filters=[MetadataFilter(key="tag", value=tag)], condition="or"
             )
             retriever = create_retriever(
                 index=index,
                 cutoff=args.cutoff,
                 top_k_retriever=args.top_k_retriever,
+                alpha=args.alpha,
                 filters=filters,
             )
-            nodes = get_nodes(query, retriever, reranker=None)
+            nodes = get_nodes(query, retriever, reranker=None, cutoff=args.cutoff)
+
+            print_references(nodes)
             prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
             output_response = get_llm_answer(llm, prefix, streaming=False)

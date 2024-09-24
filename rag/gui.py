@@ -8,7 +8,17 @@ from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
 from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer
 
-from rag._defaults import DEFAULT_HF_CHAT_MODEL, DEFAULT_HF_EMBED_MODEL, DEFAULT_MAX_NEW_TOKS
+from rag._defaults import (
+    DEFAULT_ALPHA,
+    DEFAULT_CUTOFF,
+    DEFAULT_HF_CHAT_MODEL,
+    DEFAULT_HF_EMBED_MODEL,
+    DEFAULT_MAX_NEW_TOKS,
+    DEFAULT_SYSTEM_PROMPT,
+    DEFAULT_TEMP,
+    DEFAULT_TOP_K_RETRIEVER,
+    DEFAULT_TOP_P,
+)
 from rag.query import (
     create_retriever,
     get_llama3_1_instruct_str,
@@ -19,7 +29,6 @@ from rag.query import (
 )
 
 static_path = pathlib.Path(__file__).parent.joinpath("static")
-print(f"{static_path=}")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")
@@ -42,9 +51,21 @@ parser.add_argument(
 )
 parser.add_argument(
     "--top-k-retriever",
-    default=5,
+    default=DEFAULT_TOP_K_RETRIEVER,
     type=int,
     help="top k for retreiver",
+)
+parser.add_argument(
+    "--temp",
+    default=DEFAULT_TEMP,
+    type=float,
+    help="Generation temp",
+)
+parser.add_argument(
+    "--top-p",
+    default=DEFAULT_TOP_P,
+    type=float,
+    help="top p probability for generation",
 )
 parser.add_argument(
     "--max-new-tokens",
@@ -54,9 +75,15 @@ parser.add_argument(
 )
 parser.add_argument(
     "--cutoff",
-    default=0.7,
+    default=DEFAULT_CUTOFF,
     type=float,
     help="cutoff for similarity score",
+)
+parser.add_argument(
+    "--alpha",
+    default=DEFAULT_ALPHA,
+    type=float,
+    help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
 )
 parser.add_argument("--streaming", help="stream responses", action="store_true")
 args = parser.parse_args()
@@ -98,11 +125,14 @@ st.markdown(
 
 st.header("Retrieval Augmented Generation (RAG) Demo Q&A", divider="gray")
 
-st.session_state.temp = 0.2
-st.session_state.top_p = 0.8
-st.session_state.max_length = 250
-st.session_state.cutoff = args.cutoff
-st.session_state.top_k_retriever = args.top_k_retriever
+# Use alpha as a guard for all session_state elements
+if "alpha" not in st.session_state:
+    st.session_state.alpha = args.alpha
+    st.session_state.cutoff = args.cutoff
+    st.session_state.max_length = args.max_new_tokens
+    st.session_state.temp = args.temp
+    st.session_state.top_k_retriever = args.top_k_retriever
+    st.session_state.top_p = args.top_p
 
 tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
@@ -155,9 +185,9 @@ with st.spinner(f"Loading data and {args.embedding_model_path} embedding model..
 tags = []
 uploaded_files = {}
 filters = None
-for i in range(len(chunks["ids"])):
-    file = chunks["metadatas"][i]["Source"]
-    eltags = chunks["metadatas"][i]["Tag"]
+for c in chunks:
+    file = c.properties["source"]
+    eltags = c.properties["tag"]
     if eltags not in tags:
         tags.append(eltags)
     if eltags not in uploaded_files:
@@ -177,7 +207,8 @@ def list_sources():
                 files = uploaded_files[tag]
                 for file in files:
                     st.write(file)
-            meta_filters.append(MetadataFilter(key="Tag", value=tag))
+            # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
+            meta_filters.append(MetadataFilter(key="tag", value=tag))
         filters = MetadataFilters(
             filters=meta_filters,
             condition="or",
@@ -231,6 +262,7 @@ def reload():
         index=index,
         cutoff=st.session_state.cutoff,
         top_k_retriever=st.session_state.top_k_retriever,
+        alpha=st.session_state.alpha,
         filters=filters,
     )
 
@@ -241,19 +273,26 @@ def output_stream(llm_stream):
 
 
 with col1.expander("Settings"):
-    temp = st.slider("Temperature", 0.0, 1.0, key="temp")
-    top_k_retriever = st.slider("Top K (Retriever)", 1, 25, key="top_k_retriever")
-    cutoff = st.slider("Cutoff", 0.0, 1.0, key="cutoff")
-    instructions = st.text_area("Prompt Instructions", default_instructions)
+    st.slider("Temperature", 0.0, 1.0, key="temp")
+    st.slider("Top K (Retriever)", 1, 25, key="top_k_retriever")
+    st.slider("Cutoff", 0.0, 1.0, key="cutoff")
+    st.slider("Alpha", 0.0, 1.0, key="alpha")
+    st.slider("Top P (Chat)", 0.0, 1.0, key="top_p")
+    st.slider("Max New Tokens", 250, 2048, key="max_length")
+    st.text_area("Prompt Instructions", DEFAULT_SYSTEM_PROMPT, key="system_prompt")
     st.button("Update Settings", on_click=reload())
+
+# st.write(st.session_state)
+
 
 # Accept user input
 if prompt := input_container.chat_input("Say something..."):
     with chat_container.chat_message("user"):
         st.write(prompt)
 
-    nodes = get_nodes(prompt, retriever, reranker=None)
-    prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer)
+    print(f"{args.cutoff=}, {st.session_state.cutoff=}")
+    nodes = get_nodes(prompt, retriever, reranker=None, cutoff=st.session_state.cutoff)
+    prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer, st.session_state.system_prompt)
     print(f"Querying with prompt: {prompt}")
     nodes = get_nodes(prompt, retriever, reranker=None)
     response = get_llm_answer(Settings.llm, prefix, args.streaming)
