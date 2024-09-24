@@ -7,7 +7,8 @@ from typing import Optional
 import pandas as pd
 import torch
 from llama_index.core import VectorStoreIndex
-from llama_index.core.postprocessor import LLMRerank
+from llama_index.core.postprocessor import LLMRerank, SentenceTransformerRerank
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
@@ -155,7 +156,7 @@ def create_retriever(
 def get_nodes(
     query: str,
     retriever: VectorIndexRetriever,
-    reranker: Optional[LLMRerank] = None,
+    reranker: Optional[BaseNodePostprocessor] = None,
     cutoff: Optional[float] = None,
 ) -> list[NodeWithScore]:
     """
@@ -184,9 +185,11 @@ def get_nodes(
             nodes = nodes[:1]
 
     if reranker is not None:
+        print(f"Reranking {len(nodes)} nodes {[n.node.id_ for n in nodes]=} ")
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
+        print(f"After reranking, {len(nodes)} nodes: {[n.node.id_ for n in nodes]=} ")
 
-    print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
+    # print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
     return nodes
 
 
@@ -309,6 +312,11 @@ if __name__ == "__main__":
         type=float,
         help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
     )
+    parser.add_argument(
+        "--rerank",
+        help="rerank",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
@@ -332,7 +340,6 @@ if __name__ == "__main__":
             all_tags.append(eltags)
     print("\nAll tags found: " + str(all_tags) + "\n")
 
-    reranker = LLMRerank(top_n=args.top_k_reranker) if args.top_k_reranker else None
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
     generate_kwargs = {
@@ -354,6 +361,11 @@ if __name__ == "__main__":
         llm = get_local_llm(
             args.model_name, tokenizer, args.max_new_tokens, args.use_4bit_quant, generate_kwargs
         )
+
+    reranker = (
+        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=3) if args.rerank else None
+    )
+    reranker = LLMRerank(llm=llm, top_n=3) if args.rerank else None
 
     if args.output_folder and not os.path.exists(args.output_folder):
         print(args.output_folder + " does not exist yet, creating it...")
@@ -393,7 +405,6 @@ if __name__ == "__main__":
             )
 
     for tag in tags:
-    
         # Tracking results individually for each tag
         d = {}
         d["Queries"] = []
@@ -401,7 +412,7 @@ if __name__ == "__main__":
         d["Main Source"] = []
 
         d["Queries"] = query_list
-    
+
         for query in query_list:
             # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
             filters = MetadataFilters(
@@ -414,7 +425,7 @@ if __name__ == "__main__":
                 alpha=args.alpha,
                 filters=filters,
             )
-            nodes = get_nodes(query, retriever, reranker=None, cutoff=args.cutoff)
+            nodes = get_nodes(query, retriever, reranker=reranker, cutoff=args.cutoff)
 
             print_references(nodes)
             prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
