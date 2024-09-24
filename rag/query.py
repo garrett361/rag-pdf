@@ -392,7 +392,7 @@ if __name__ == "__main__":
         )
 
     reranker = (
-        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=3)
+        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=args.top_k_reranker)
         if args.top_k_reranker
         else None
     )
