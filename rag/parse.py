@@ -124,16 +124,16 @@ def clean_parsed(json_file, llm, tokenizer):
                 llm, tokenizer, UNINFORMATIVE_PROMPT.format(context=text)
             ).text
             if uninformative.lower() == "yes":
-                print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
+                print(f"?????????? UNINFORMATIVE Below ({uninformative=}) ??????????\n")
                 print(text)
-                print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
+                print(f"?????????? UNINFORMATIVE Above ({uninformative=}) ??????????\n")
             else:
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
-                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below {uninformative=} ▼▼▼▼▼▼▼▼▼")
-                print(prefix)
+                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below ({uninformative=}) ▼▼▼▼▼▼▼▼▼")
+                print(text, "\n")
                 print(question_answered)
-                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
+                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above ({uninformative=}) ▲▲▲▲▲▲▲▲▲▲")
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
     with open(json_file, "w") as f:
