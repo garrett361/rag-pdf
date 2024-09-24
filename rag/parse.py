@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import nltk
 from copy import deepcopy
 from pathlib import Path
 from typing import Optional
@@ -278,5 +279,7 @@ if __name__ == "__main__":
 
     if args.clean_parse_with_llm and not args.model_name:
         raise ValueError("A --model-name argument must be suped with --clean-parse-with-llm.")
+    
+    nltk.download('punkt_tab')
 
     main(**vars(args))
