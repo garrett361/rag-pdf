@@ -5,9 +5,7 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 DOCKER_IMAGE=garrettgoon/rag-pdf-$(git rev-parse --short HEAD)
 
-echo "Running docker buildx build --platform linux/amd64 . -t $DOCKER_IMAGE --no-cache"
-
-docker buildx build  --platform linux/amd64 . -t $DOCKER_IMAGE --no-cache
+docker buildx build  --platform linux/amd64 . -t $DOCKER_IMAGE
 
 echo "Running  docker push $DOCKER_IMAGE..."
 
