@@ -18,8 +18,8 @@ from rag._defaults import (
     DEFAULT_MAX_CHARACTERS,
     DEFAULT_NEW_AFTER_N_CHARS,
     DEFAULT_SYSTEM_PROMPT,
+    INFORMATIVE_PROMPT,
     QA_PROMPT,
-    UNINFORMATIVE_PROMPT,
 )
 from rag._utils import get_tag_from_dir
 from rag.query import get_local_llm
@@ -120,20 +120,20 @@ def clean_parsed(json_file, llm, tokenizer):
                     text = doc["metadata"]["text_as_html"]
                 else:
                     text = doc["content"]
-            uninformative = generate_completion(
-                llm, tokenizer, UNINFORMATIVE_PROMPT.format(context=text)
+            informative = generate_completion(
+                llm, tokenizer, INFORMATIVE_PROMPT.format(context=text)
             ).text
-            if uninformative.lower() == "yes":
-                print(f"?????????? UNINFORMATIVE Below ({uninformative=}) ??????????\n")
+            if informative.lower() == "no":
+                print(f"?????????? UNINFORMATIVE Below ({informative=}) ??????????\n")
                 print(text)
-                print(f"?????????? UNINFORMATIVE Above ({uninformative=}) ??????????\n")
+                print(f"?????????? UNINFORMATIVE Above ({informative=}) ??????????\n")
             else:
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
-                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below ({uninformative=}) ▼▼▼▼▼▼▼▼▼")
+                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below ({informative=}) ▼▼▼▼▼▼▼▼▼")
                 print(text, "\n")
                 print(question_answered)
-                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above ({uninformative=}) ▲▲▲▲▲▲▲▲▲▲")
+                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above ({informative=}) ▲▲▲▲▲▲▲▲▲▲")
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
     with open(json_file, "w") as f:

@@ -20,16 +20,22 @@ DEFAULT_TOP_K_RETRIEVER = 10
 DEFAULT_COMBINE_TEXT_UNDER_N_CHARS = 200
 DEFAULT_MAX_CHARACTERS = 1500
 DEFAULT_NEW_AFTER_N_CHARS = 1500
-UNINFORMATIVE_PROMPT = dedent("""
-Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
-{context}
+INFORMATIVE_PROMPT = dedent("""
+I will ask you if the text extract below looks informative. Examples of uninformative extracts include headers, footers, and random gibberish characters.
 
-Only respond with "yes" or "no".
+---------------------
+{context}
+---------------------
+
+Was the above extract informative? Only respond with "yes" or "no".
 """).strip("\n")
 
 QA_PROMPT = dedent("""
-Generate the main question that is answered by the information provided in the passage below.  Ignore weird formatting or characters that look out of place.
+What question can be answered from the information provided in the document extract below?
+
+---------------------
 {context}
+---------------------
 
 Only respond with the question.
 """).strip("\n")
