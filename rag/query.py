@@ -392,15 +392,16 @@ if __name__ == "__main__":
                 f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
             )
 
-    # Tracking results
-    d = {}
-    d["Queries"] = []
-    d["Answers"] = []
-    d["Main Source"] = []
-
-    d["Queries"] = query_list
-
     for tag in tags:
+    
+        # Tracking results individually for each tag
+        d = {}
+        d["Queries"] = []
+        d["Answers"] = []
+        d["Main Source"] = []
+
+        d["Queries"] = query_list
+    
         for query in query_list:
             # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
             filters = MetadataFilters(
@@ -416,7 +417,7 @@ if __name__ == "__main__":
             nodes = get_nodes(query, retriever, reranker=None, cutoff=args.cutoff)
 
             print_references(nodes)
-            prefix = get_llama3_1_instruct_str(args.query, nodes, tokenizer)
+            prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
             output_response = get_llm_answer(llm, prefix, streaming=False)
             print(f"\n{query=}, {tag=}, {output_response.text=}\n")
@@ -428,15 +429,15 @@ if __name__ == "__main__":
                 + str(nodes[0].node.metadata["PageNumber"])
             )
 
-    if args.output_folder:
-        output_df = pd.DataFrame(data=d)
+        if args.output_folder:
+            output_df = pd.DataFrame(data=d)
 
-        suffix = "all_documents_mixed"
-        if tag:
-            suffix = tag
-        elif args.folder:
-            suffix = args.folder
+            suffix = "all_documents_mixed"
+            if tag:
+                suffix = tag
+            elif args.folder:
+                suffix = args.folder
 
-        xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
-        print("Saving output to " + xlsx_name)
-        output_df.to_excel(xlsx_name, index=False)
+            xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
+            print("Saving output to " + xlsx_name)
+            output_df.to_excel(xlsx_name, index=False)
