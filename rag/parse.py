@@ -1,11 +1,11 @@
 import argparse
 import json
 import os
-import nltk
 from copy import deepcopy
 from pathlib import Path
 from typing import Optional
 
+import nltk
 import torch
 from llama_index.llms.openllm import OpenLLM
 from loguru import logger
@@ -124,17 +124,16 @@ def clean_parsed(json_file, llm, tokenizer):
                 llm, tokenizer, UNINFORMATIVE_PROMPT.format(context=text)
             ).text
             if uninformative.lower() == "yes":
-                # print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
-                # print(text)
-                # print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
-                pass
+                print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
+                print(text)
+                print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
             else:
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
-                # print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below {uninformative=} ▼▼▼▼▼▼▼▼▼")
-                # print(prefix)
-                # print(question_answered)
-                # print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
+                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below {uninformative=} ▼▼▼▼▼▼▼▼▼")
+                print(prefix)
+                print(question_answered)
+                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
     with open(json_file, "w") as f:
@@ -279,7 +278,7 @@ if __name__ == "__main__":
 
     if args.clean_parse_with_llm and not args.model_name:
         raise ValueError("A --model-name argument must be suped with --clean-parse-with-llm.")
-    
-    nltk.download('punkt_tab')
+
+    nltk.download("punkt_tab")
 
     main(**vars(args))
