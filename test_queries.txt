@@ -3,3 +3,13 @@ What is the End Customer name?
 What is the EPC name?
 What is the plant location?
 What is the Consultant name?
+What is the plant composition?
+What is the output size/quantity of the plant?
+What are the main systems in the document? Some of the main systems for your reference are 'BPCS (Basic Process Control System)','DCS (Distributed Control System)','FGS/F&G (Fire and Gas System)','ESD (Emergency Shutdown System)','SCADA','ICSS'. Answer could be from any of these Keywords. give answer in json format like {"systems":["sys1","sys2"....]}
+What are the process areas for DCS system mentioned in the document? Some of the process areas for your reference are 'Pretreatment area','Boiler','BOP','Wellhead','Degassing','Wellbays','TAS','F&G'. Answer could be from any of these Keywords.  give answer in json format like {"process areas":["area1","area2"....]}
+What is the design criteria mentioned for each of the process areas for DCS system mentioned in the document? give answer in json format like {"area1":["design"]}
+Provide the scope of work summary for DCS system mentioned in the document? give answer in json format like {'System':['scope']}
+Give the controller specifications of the DCS system in following JSON Format like {'System'{'DCS':{'Redundant':'Yes','HART':'Yes'}, 'Memory backup', 'Power supply fault',...,'IO Module faults','etc'} } give answer in yes/no format instead of the lengthy sentences
+Provide the list of documents related to bill of material
+Provide the list of documents with proposals related to system architecture
+For each of the below mentioned communication protocals, check if the document specifies the usage of mentioned communication protocol? Please respond with either “Yes" or "No". \n1. Ethernet-TCP/IP \n2. Modbus-TCP \n3. Modbus-RTU \n4. Profibus \n5. Profinet \n6. OPC-HDA \n7. OPC-UA \n8. ISA 100.11a/Wireless \n9. HART/Wireless \n10. Foundation Fieldbus \n11. IEC104 \n12. DNP3 \n13. IEC61850
