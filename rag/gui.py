@@ -306,6 +306,8 @@ if prompt := input_container.chat_input("Say something..."):
     with chat_container.chat_message("user"):
         st.write(prompt)
 
+    if args.top_k_reranker is not None:
+        assert st.session_state.reranker is not None
     nodes = get_nodes(
         prompt, retriever, reranker=st.session_state.reranker, cutoff=st.session_state.cutoff
     )
