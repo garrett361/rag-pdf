@@ -18,8 +18,8 @@ DEFAULT_TEMP = 0.2
 DEFAULT_CUTOFF = 0.1
 DEFAULT_TOP_K_RETRIEVER = 10
 DEFAULT_COMBINE_TEXT_UNDER_N_CHARS = 100
-DEFAULT_MAX_CHARACTERS = 500
-DEFAULT_NEW_AFTER_N_CHARS = 500
+DEFAULT_MAX_CHARACTERS = 1000
+DEFAULT_NEW_AFTER_N_CHARS = 1000
 INFORMATIVE_PROMPT = dedent("""
 I will ask you if the text extract below looks informative. Examples of uninformative extracts include headers, footers, and random gibberish characters.
 
