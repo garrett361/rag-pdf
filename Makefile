@@ -59,7 +59,7 @@ test-query-hosted:
 
 .PHONY: test-query-hosted-rerank
 test-query-hosted-rerank:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --rerank
+	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --top-k-reranker 3
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:

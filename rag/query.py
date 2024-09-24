@@ -7,7 +7,7 @@ from typing import Optional
 import pandas as pd
 import torch
 from llama_index.core import VectorStoreIndex
-from llama_index.core.postprocessor import LLMRerank, SentenceTransformerRerank
+from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle
@@ -185,9 +185,15 @@ def get_nodes(
             nodes = nodes[:1]
 
     if reranker is not None:
+        print("------------------\n\n")
         print(f"Reranking {len(nodes)} nodes {[n.node.id_ for n in nodes]=} ")
+        print_references(nodes)
+        print("\n\n------------------")
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
+        print("------------------\n\n")
         print(f"After reranking, {len(nodes)} nodes: {[n.node.id_ for n in nodes]=} ")
+        print_references(nodes)
+        print("\n\n------------------")
 
     # print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
     return nodes
@@ -207,7 +213,7 @@ def get_llm_answer(
 def print_references(nodes):
     # TODO: @garrett.goon - Delete below, just for debugging/visuals
     print("\n **** REFERENCES **** \n")
-    for n in nodes[0:5]:
+    for idx, n in enumerate(nodes):
         title = n.node.metadata["Source"]
         page = n.node.metadata["PageNumber"]
         text = n.node.text
@@ -215,6 +221,7 @@ def print_references(nodes):
         out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((n.score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
 
+        print(f"\nReference: {idx}")
         print(f"\n{out_title=}")
         print(f"{out_text=}\n")
 
@@ -312,11 +319,6 @@ if __name__ == "__main__":
         type=float,
         help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
     )
-    parser.add_argument(
-        "--rerank",
-        help="rerank",
-        action="store_true",
-    )
 
     args = parser.parse_args()
 
@@ -363,9 +365,11 @@ if __name__ == "__main__":
         )
 
     reranker = (
-        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=3) if args.rerank else None
+        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=3)
+        if args.top_k_reranker
+        else None
     )
-    reranker = LLMRerank(llm=llm, top_n=3) if args.rerank else None
+    # reranker = LLMRerank(llm=llm, top_n=3) if args.rerank else None
 
     if args.output_folder and not os.path.exists(args.output_folder):
         print(args.output_folder + " does not exist yet, creating it...")
@@ -427,11 +431,12 @@ if __name__ == "__main__":
             )
             nodes = get_nodes(query, retriever, reranker=reranker, cutoff=args.cutoff)
 
-            print_references(nodes)
             prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
             print("\n\nApply query to " + tag + " folder only")
             output_response = get_llm_answer(llm, prefix, streaming=False)
-            print(f"\n{query=}, {tag=}, {output_response.text=}\n")
+            print("**************************\n\n")
+            print(f"\n\n{query=}\n\n{tag=}\n\n{prefix=}\n\n{output_response.text=}\n")
+            print("\n\n**************************")
 
             d["Answers"].append(output_response.text)
             d["Main Source"].append(
