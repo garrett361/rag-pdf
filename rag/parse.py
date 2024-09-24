@@ -13,6 +13,9 @@ from unstructured.partition.auto import partition
 
 from rag._defaults import (
     DEFAULT_CHUNK_STRAT,
+    DEFAULT_COMBINE_TEXT_UNDER_N_CHARS,
+    DEFAULT_MAX_CHARACTERS,
+    DEFAULT_NEW_AFTER_N_CHARS,
     DEFAULT_SYSTEM_PROMPT,
     QA_PROMPT,
     UNINFORMATIVE_PROMPT,
@@ -121,16 +124,17 @@ def clean_parsed(json_file, llm, tokenizer):
                 llm, tokenizer, UNINFORMATIVE_PROMPT.format(context=text)
             ).text
             if uninformative.lower() == "yes":
-                print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
-                print(text)
-                print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
+                # print(f"▼▼▼▼▼▼▼▼▼▼  UNINFORMATIVE Below {uninformative=} ▼▼▼▼▼▼▼▼▼▼\n")
+                # print(text)
+                # print(f"▲▲▲▲▲▲▲▲▲▲ UNINFORMATIVE Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲\n")
+                pass
             else:
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
-                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below {uninformative=} ▼▼▼▼▼▼▼▼▼")
-                print(prefix)
-                print(question_answered)
-                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
+                # print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below {uninformative=} ▼▼▼▼▼▼▼▼▼")
+                # print(prefix)
+                # print(question_answered)
+                # print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above {uninformative=} ▲▲▲▲▲▲▲▲▲▲")
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
     print(f"clean_parse results = {results[0]['metadata']}")
@@ -228,10 +232,20 @@ if __name__ == "__main__":
         "--chunking_strategy", default=DEFAULT_CHUNK_STRAT, help="chunking strategy"
     )
     parser.add_argument(
-        "--combine_text_under_n_chars", default=None, type=int, help="unstructured setting"
+        "--combine_text_under_n_chars",
+        default=DEFAULT_COMBINE_TEXT_UNDER_N_CHARS,
+        type=int,
+        help="unstructured setting",
     )
-    parser.add_argument("--max_characters", default=None, type=int, help="unstructured setting")
-    parser.add_argument("--new_after_n_chars", default=None, type=int, help="unstructured setting")
+    parser.add_argument(
+        "--max_characters", default=DEFAULT_MAX_CHARACTERS, type=int, help="unstructured setting"
+    )
+    parser.add_argument(
+        "--new_after_n_chars",
+        default=DEFAULT_NEW_AFTER_N_CHARS,
+        type=int,
+        help="unstructured setting",
+    )
     parser.add_argument(
         "--folder_tags",
         action="store_true",

@@ -15,8 +15,11 @@ DEFAULT_MAX_NEW_TOKS = 1024
 DEFAULT_TOP_P = 0.9
 DEFAULT_ALPHA = 0.2
 DEFAULT_TEMP = 0.2
-DEFAULT_CUTOFF = 0.6
+DEFAULT_CUTOFF = 0.1
 DEFAULT_TOP_K_RETRIEVER = 5
+DEFAULT_COMBINE_TEXT_UNDER_N_CHARS = 200
+DEFAULT_MAX_CHARACTERS = 1500
+DEFAULT_NEW_AFTER_N_CHARS = 1500
 UNINFORMATIVE_PROMPT = dedent("""
 Does the text extract below from a parsed PDF look like it's a part of the table of contents, or repeated header and footer, or a random gibberish of characters?
 {context}

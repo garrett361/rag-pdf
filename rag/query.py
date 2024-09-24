@@ -19,10 +19,14 @@ from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from rag._defaults import (
     DEFAULT_ALPHA,
+    DEFAULT_CUTOFF,
     DEFAULT_HF_CHAT_MODEL,
     DEFAULT_HF_EMBED_MODEL,
     DEFAULT_MAX_NEW_TOKS,
     DEFAULT_SYSTEM_PROMPT,
+    DEFAULT_TEMP,
+    DEFAULT_TOP_K_RETRIEVER,
+    DEFAULT_TOP_P,
 )
 from rag._utils import get_tag_from_dir
 
@@ -170,7 +174,6 @@ def get_nodes(
 
     # TODO: @garrett.goon - Delete this hack for filtering nodes based on a cutoff for
     # weaviate indexes. See https://github.com/run-llama/llama_index/issues/14728
-    print(f"found {len(nodes)=}, {[n.score for n in nodes]}")
     if cutoff:
         filtered_nodes = [n for n in nodes if n.score >= args.cutoff]
         # If no nodes survive the filter, just take the best node left to avoid erroring
@@ -182,6 +185,8 @@ def get_nodes(
 
     if reranker is not None:
         nodes = reranker.postprocess_nodes(nodes, query_bundle)
+
+    print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
     return nodes
 
 
@@ -235,7 +240,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--top-k-retriever",
-        default=5,
+        default=DEFAULT_TOP_K_RETRIEVER,
         type=int,
         help="top k results for retriever",
     )
@@ -247,13 +252,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--temp",
-        default=0.2,
+        default=DEFAULT_TEMP,
         type=float,
         help="Generation temp",
     )
     parser.add_argument(
         "--top-p",
-        default=0.9,
+        default=DEFAULT_TOP_P,
         type=float,
         help="top p probability for generation",
     )
@@ -265,7 +270,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cutoff",
-        default=0.6,
+        default=DEFAULT_CUTOFF,
         type=float,
         help="Filter out docs with score below cutoff.",
     )

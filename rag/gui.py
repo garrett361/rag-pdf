@@ -9,6 +9,7 @@ from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer
 
 from rag._defaults import (
+    DEFAULT_ALPHA,
     DEFAULT_CUTOFF,
     DEFAULT_HF_CHAT_MODEL,
     DEFAULT_HF_EMBED_MODEL,
@@ -27,7 +28,6 @@ from rag.query import (
 )
 
 static_path = pathlib.Path(__file__).parent.joinpath("static")
-print(f"{static_path=}")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--path-to-db", type=str, default="db", help="path to chroma db")
@@ -55,6 +55,18 @@ parser.add_argument(
     help="top k for retreiver",
 )
 parser.add_argument(
+    "--temp",
+    default=DEFAULT_TEMP,
+    type=float,
+    help="Generation temp",
+)
+parser.add_argument(
+    "--top-p",
+    default=DEFAULT_TOP_P,
+    type=float,
+    help="top p probability for generation",
+)
+parser.add_argument(
     "--max-new-tokens",
     default=DEFAULT_MAX_NEW_TOKS,
     type=int,
@@ -65,6 +77,12 @@ parser.add_argument(
     default=DEFAULT_CUTOFF,
     type=float,
     help="cutoff for similarity score",
+)
+parser.add_argument(
+    "--alpha",
+    default=DEFAULT_ALPHA,
+    type=float,
+    help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
 )
 parser.add_argument("--streaming", help="stream responses", action="store_true")
 args = parser.parse_args()
@@ -106,11 +124,12 @@ st.markdown(
 
 st.header("Retrieval Augmented Generation (RAG) Demo Q&A", divider="gray")
 
-st.session_state.temp = DEFAULT_TEMP
-st.session_state.top_p = DEFAULT_TOP_P
-st.session_state.max_length = DEFAULT_MAX_NEW_TOKS
+st.session_state.alpha = args.alpha
 st.session_state.cutoff = args.cutoff
+st.session_state.max_length = args.max_new_tokens
+st.session_state.temp = args.temp
 st.session_state.top_k_retriever = args.top_k_retriever
+st.session_state.top_p = args.top_p
 
 tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
@@ -240,6 +259,7 @@ def reload():
         index=index,
         cutoff=st.session_state.cutoff,
         top_k_retriever=st.session_state.top_k_retriever,
+        alpha=st.session_state.alpha,
         filters=filters,
     )
 
@@ -261,7 +281,8 @@ if prompt := input_container.chat_input("Say something..."):
     with chat_container.chat_message("user"):
         st.write(prompt)
 
-    nodes = get_nodes(prompt, retriever, reranker=None)
+    print(f"{args.cutoff=}, {st.session_state.cutoff=}")
+    nodes = get_nodes(prompt, retriever, reranker=None, cutoff=st.session_state.cutoff)
     prefix = get_llama3_1_instruct_str(prompt, nodes, tokenizer)
     print(f"Querying with prompt: {prompt}")
     nodes = get_nodes(prompt, retriever, reranker=None)

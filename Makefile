@@ -1,15 +1,14 @@
 QUERY = "What are the plant location conditions?"
-HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
+# HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
+HOSTED_CHAT = "http://llama-3-1-8b.pdk.10.6.39.90.sslip.io/v1"
 HOSTED_EMBED = "http://embedding-tyler.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 INPUT_DIR = "private/RFQ_Commercial/"
 FOLDER = "Petrobras"
 OUTPUT_FOLDER = "private/test/query"
 PATH_TO_DB = "private/test/embedded"
 MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
-COMBINE_TEXT_UNDER_N_CHARS = "200"
-MAX_CHARACTERS = "1500"
-NEW_AFTER_N_CHARS = "1500"
+# MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
+MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 .PHONY: install
 install:
@@ -35,11 +34,11 @@ clean:
 
 .PHONY: test-parse
 test-parse:
-	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars ${COMBINE_TEXT_UNDER_N_CHARS} --max_characters ${MAX_CHARACTERS} --new_after_n_chars ${NEW_AFTER_N_CHARS}
+	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --folder_tags
 
 .PHONY: test-parse-hosted-cleaned
 test-parse-hosted-cleaned:
-	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --chunking_strategy "by_title" --folder_tags --combine_text_under_n_chars ${COMBINE_TEXT_UNDER_N_CHARS} --max_characters ${MAX_CHARACTERS} --new_after_n_chars ${NEW_AFTER_N_CHARS} --clean-parse-with-llm --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT}
+	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --folder_tags --clean-parse-with-llm --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT}
 
 .PHONY: test-embed
 test-embed:
@@ -52,16 +51,15 @@ test-embed-hosted:
 
 .PHONY: test-query
 test-query:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_LOCAL} --top-k-retriever 5 --folder ${FOLDER}
+	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_LOCAL} --folder ${FOLDER}
 
 .PHONY: test-query-hosted
 test-query-hosted:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER}
-
+	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER}
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:
-	python -m rag.query --query-file test_queries.txt --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --top-k-retriever 5 --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER}
+	python -m rag.query --query-file test_queries.txt --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER}
 
 .PHONY: test
 test:
@@ -79,4 +77,4 @@ test-hosted:
 
 .PHONY: test-ui-hosted
 test-ui-hosted:
-	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --embedding_model_path ${HOSTED_EMBED} --cutoff 0.6 --chat-model-endpoint ${HOSTED_CHAT} --streaming
+	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --embedding_model_path ${HOSTED_EMBED} --chat-model-endpoint ${HOSTED_CHAT} --streaming
