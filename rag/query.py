@@ -175,7 +175,7 @@ def get_nodes(
     # TODO: @garrett.goon - Delete this hack for filtering nodes based on a cutoff for
     # weaviate indexes. See https://github.com/run-llama/llama_index/issues/14728
     if cutoff:
-        filtered_nodes = [n for n in nodes if n.score >= args.cutoff]
+        filtered_nodes = [n for n in nodes if n.score >= cutoff]
         # If no nodes survive the filter, just take the best node left to avoid erroring
         if filtered_nodes:
             nodes = filtered_nodes
