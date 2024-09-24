@@ -101,7 +101,7 @@ st.markdown(
     """
     <style>
     .top-bar {
-        background-color: #00B188;
+        background-color: #FF000F;
         padding: 15px;
         color: white;
         margin-top: -82px;
@@ -168,7 +168,7 @@ def load_chat_model(
         st.write(f"Using local model: {args.model_name}")
 
 
-welcome_message = "Hello, I am HPE Document chat. \n\n Please ask me any questions related to the documents listed below. If there are no documents listed, please select a tag below to filter."
+welcome_message = "Hello, I am ABB Document chat. \n\n Please ask me any questions related to the documents listed below. If there are no documents listed, please select a tag below to filter."
 col1, col2 = st.columns(2)
 
 chat_container = col1.container(height=435, border=False)
@@ -236,7 +236,7 @@ if "messages" not in st.session_state:
         {
             "role": "assistant",
             "content": welcome_message,
-            "avatar": str(static_path.joinpath("logo.jpeg")),
+            "avatar": str(static_path.joinpath("ABB_Logo.jpeg")),
         }
     )
 
@@ -296,7 +296,7 @@ if prompt := input_container.chat_input("Say something..."):
     print(f"Querying with prompt: {prompt}")
     nodes = get_nodes(prompt, retriever, reranker=None)
     response = get_llm_answer(Settings.llm, prefix, args.streaming)
-    with chat_container.chat_message("assistant", avatar=str(static_path.joinpath("logo.jpeg"))):
+    with chat_container.chat_message("assistant", avatar=str(static_path.joinpath("ABB_Logo.jpeg"))):
         if args.streaming:
             st.write_stream(output_stream(response))
         else:
