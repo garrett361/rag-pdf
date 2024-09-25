@@ -21,7 +21,7 @@ from rag._defaults import (
     INFORMATIVE_PROMPT,
     QA_PROMPT,
 )
-from rag._utils import get_tag_from_dir
+from rag._utils import get_tag_from_dir, print_in_box
 from rag.query import get_local_llm
 from rag.rag_schema import DataElement, DataType, Document, Metadata
 
@@ -124,16 +124,14 @@ def clean_parsed(json_file, llm, tokenizer):
                 llm, tokenizer, INFORMATIVE_PROMPT.format(context=text)
             ).text
             if informative.lower() == "no":
-                print(f"?????????? UNINFORMATIVE Below ({informative=}) ??????????\n")
-                print(text)
-                print(f"?????????? UNINFORMATIVE Above ({informative=}) ??????????\n")
+                print_in_box(text, f" UNINFORMATIVE ({informative=}) ", "?", "?")
             else:
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
-                print(f"▼▼▼▼▼▼▼▼▼▼ Generating question Below ({informative=}) ▼▼▼▼▼▼▼▼▼")
-                print(text, "\n")
-                print(question_answered)
-                print(f"▲▲▲▲▲▲▲▲▲▲ Generating question Above ({informative=}) ▲▲▲▲▲▲▲▲▲▲")
+                print_in_box(
+                    text + "\n\nQuestion Answered: " + question_answered,
+                    f" Generating Question({informative=}) ",
+                )
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)
     with open(json_file, "w") as f:
