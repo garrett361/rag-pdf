@@ -113,14 +113,7 @@ if __name__ == "__main__":
         print(f"\nUsing local Embedding model: {args.embedding_model_path}\n")
         embed_model = HuggingFaceEmbedding(model_name=args.embedding_model_path)
 
-    try:
-        weaviate_client = weaviate.WeaviateClient(
-            embedded_options=weaviate.EmbeddedOptions(persistence_data_path=args.path_to_db)
-        )
-        weaviate_client.connect()
-    except Exception as e:
-        print(f"Try/except past Exception {e}")
-        weaviate_client = weaviate.connect_to_local(port=8079, grpc_port=50060)
-        print(weaviate_client.is_ready())
-
-    embed(args.data_path, args.path_to_db, embed_model, weaviate_client)
+    with weaviate.WeaviateClient(
+        embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path=args.path_to_db)
+    ) as weaviate_client:
+        embed(args.data_path, args.path_to_db, embed_model, weaviate_client)

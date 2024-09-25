@@ -7,6 +7,7 @@ from typing import Optional
 
 import pandas as pd
 import torch
+import weaviate
 from llama_index.core import VectorStoreIndex
 from llama_index.core.postprocessor import SentenceTransformerRerank
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
@@ -17,6 +18,7 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.llms.openllm import OpenLLM
+from llama_index.vector_stores.weaviate import WeaviateVectorStore
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
 from rag._defaults import (
@@ -35,7 +37,7 @@ from rag._utils import get_tag_from_dir
 
 class QuestionAnsweredNodePostprocessor(BaseNodePostprocessor):
     """
-    Creates new nodes with the question answered by the extract appended
+    Creates new nodes with the question answered by the extract appended.
     """
 
     def _postprocess_nodes(
@@ -118,26 +120,15 @@ def get_local_llm(
     return llm
 
 
-def load_data(embedding_model_path: str, path_to_db: str) -> tuple[VectorStoreIndex, dict]:
+def load_data(
+    embedding_model_path: str, weaviate_client: weaviate.WeaviateClient
+) -> tuple[VectorStoreIndex, dict]:
     if embedding_model_path.startswith("http"):
         print(f"\nUsing Embedding API model endpoint: {embedding_model_path}\n")
         embed_model = OpenAIEmbedding(api_base=embedding_model_path, api_key="dummy")
     else:
         print(f"\nEmbedding model: {embedding_model_path}\n")
         embed_model = HuggingFaceEmbedding(model_name=embedding_model_path)
-
-    import weaviate
-    from llama_index.vector_stores.weaviate import WeaviateVectorStore
-
-    try:
-        weaviate_client = weaviate.WeaviateClient(
-            embedded_options=weaviate.EmbeddedOptions(persistence_data_path=path_to_db)
-        )
-        weaviate_client.connect()
-    except Exception as e:
-        print(f"Try/except past Exception {e}")
-        weaviate_client = weaviate.connect_to_local(port=8079, grpc_port=50060)
-        print(weaviate_client.is_ready())
 
     vector_store = WeaviateVectorStore(weaviate_client=weaviate_client, index_name="Documents")
 
@@ -360,128 +351,135 @@ if __name__ == "__main__":
     if args.top_k_reranker and args.top_k_reranker > args.top_k_retriever:
         raise ValueError("top_k_reranker, if provided, must be smaller than top_k_retriever.")
 
-    index, chunks = load_data(args.embedding_model_path, args.path_to_db)
+    with weaviate.WeaviateClient(
+        embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path=args.path_to_db)
+    ) as weaviate_client:
+        index, chunks = load_data(args.embedding_model_path, weaviate_client)
 
-    all_tags = []
-    for c in chunks:
-        eltags = c.properties["tag"]
-        if eltags not in all_tags:
-            all_tags.append(eltags)
-    print("\nAll tags found: " + str(all_tags) + "\n")
+        all_tags = []
+        for c in chunks:
+            eltags = c.properties["tag"]
+            if eltags not in all_tags:
+                all_tags.append(eltags)
+        print("\nAll tags found: " + str(all_tags) + "\n")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
 
-    generate_kwargs = {
-        "do_sample": True,
-        "temperature": args.temp,
-        "top_p": args.top_p,
-    }
-    if args.chat_model_endpoint:
-        print(f"\nUsing hosted LLM at: {args.chat_model_endpoint}\n")
-        llm = OpenLLM(
-            model=args.model_name,
-            api_base=args.chat_model_endpoint,
-            api_key="fake",
-            generate_kwargs=generate_kwargs,
-            max_tokens=args.max_new_tokens,
-        )
-    else:
-        print(f"\nUsing local {args.model_name} LLM\n")
-        llm = get_local_llm(
-            args.model_name, tokenizer, args.max_new_tokens, args.use_4bit_quant, generate_kwargs
-        )
-
-    reranker = (
-        SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=args.top_k_reranker)
-        if args.top_k_reranker
-        else None
-    )
-    # reranker = LLMRerank(llm=llm, top_n=3) if args.rerank else None
-
-    if args.output_folder and not os.path.exists(args.output_folder):
-        print(args.output_folder + " does not exist yet, creating it...")
-        os.makedirs(args.output_folder)
-
-    # Get the list of queries from the queries file or the query arg
-    if args.query_file:
-        print("Using " + args.query_file + " as query list")
-
-        if args.query_file[-4:] == ".txt":
-            query_file = open(args.query_file, "r")
-            query_lines = query_file.readlines()
-            query_file.close()
-
-            query_list = []
-            for query in query_lines:
-                query_list.append(query.replace("\n", ""))
-        elif args.query_file[-5:] == ".xlsx":
-            query_df = pd.read_excel(args.query_file, header=None)
-            query_list = [q for q in query_df[0]]
+        generate_kwargs = {
+            "do_sample": True,
+            "temperature": args.temp,
+            "top_p": args.top_p,
+        }
+        if args.chat_model_endpoint:
+            print(f"\nUsing hosted LLM at: {args.chat_model_endpoint}\n")
+            llm = OpenLLM(
+                model=args.model_name,
+                api_base=args.chat_model_endpoint,
+                api_key="fake",
+                generate_kwargs=generate_kwargs,
+                max_tokens=args.max_new_tokens,
+            )
         else:
-            print("Format of query file not supported")
-    else:
-        query_list = [args.query]
-
-    # Filter by the provided tag or loop over all tags
-    if args.folder:
-        tags = [get_tag_from_dir(args.folder)]
-    else:
-        tags = all_tags
-
-    # Sanity check
-    for tag in tags:
-        if tag not in all_tags:
-            raise ValueError(
-                f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
+            print(f"\nUsing local {args.model_name} LLM\n")
+            llm = get_local_llm(
+                args.model_name,
+                tokenizer,
+                args.max_new_tokens,
+                args.use_4bit_quant,
+                generate_kwargs,
             )
 
-    for tag in tags:
-        # Tracking results individually for each tag
-        d = {}
-        d["Queries"] = []
-        d["Answers"] = []
-        d["Main Source"] = []
+        reranker = (
+            SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=args.top_k_reranker)
+            if args.top_k_reranker
+            else None
+        )
+        # reranker = LLMRerank(llm=llm, top_n=3) if args.rerank else None
 
-        d["Queries"] = query_list
+        if args.output_folder and not os.path.exists(args.output_folder):
+            print(args.output_folder + " does not exist yet, creating it...")
+            os.makedirs(args.output_folder)
 
-        for query in query_list:
-            # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
-            filters = MetadataFilters(
-                filters=[MetadataFilter(key="tag", value=tag)], condition="or"
-            )
-            retriever = create_retriever(
-                index=index,
-                cutoff=args.cutoff,
-                top_k_retriever=args.top_k_retriever,
-                alpha=args.alpha,
-                filters=filters,
-            )
-            nodes = get_nodes(query, retriever, reranker=reranker, cutoff=args.cutoff)
-            print_references(nodes)
+        # Get the list of queries from the queries file or the query arg
+        if args.query_file:
+            print("Using " + args.query_file + " as query list")
 
-            prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
-            print("\n\nApply query to " + tag + " folder only")
-            output_response = get_llm_answer(llm, prefix, streaming=False)
-            print("**************************\n\n")
-            print(f"\n\n{query=}\n\n{tag=}\n\n{prefix=}\n\n{output_response.text=}\n")
-            print("\n\n**************************")
+            if args.query_file[-4:] == ".txt":
+                query_file = open(args.query_file, "r")
+                query_lines = query_file.readlines()
+                query_file.close()
 
-            d["Answers"].append(output_response.text)
-            d["Main Source"].append(
-                nodes[0].node.metadata["Source"]
-                + ", page "
-                + str(nodes[0].node.metadata["PageNumber"])
-            )
+                query_list = []
+                for query in query_lines:
+                    query_list.append(query.replace("\n", ""))
+            elif args.query_file[-5:] == ".xlsx":
+                query_df = pd.read_excel(args.query_file, header=None)
+                query_list = [q for q in query_df[0]]
+            else:
+                print("Format of query file not supported")
+        else:
+            query_list = [args.query]
 
-        if args.output_folder:
-            output_df = pd.DataFrame(data=d)
+        # Filter by the provided tag or loop over all tags
+        if args.folder:
+            tags = [get_tag_from_dir(args.folder)]
+        else:
+            tags = all_tags
 
-            suffix = "all_documents_mixed"
-            if tag:
-                suffix = tag
-            elif args.folder:
-                suffix = args.folder
+        # Sanity check
+        for tag in tags:
+            if tag not in all_tags:
+                raise ValueError(
+                    f"Invalid folder. Corresponding {tag=} not found in set of all tags: {all_tags}."
+                )
 
-            xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
-            print("Saving output to " + xlsx_name)
-            output_df.to_excel(xlsx_name, index=False)
+        for tag in tags:
+            # Tracking results individually for each tag
+            d = {}
+            d["Queries"] = []
+            d["Answers"] = []
+            d["Main Source"] = []
+
+            d["Queries"] = query_list
+
+            for query in query_list:
+                # After moving to weaviate, needed to change key="Tag" to the lower-cased key="tag"
+                filters = MetadataFilters(
+                    filters=[MetadataFilter(key="tag", value=tag)], condition="or"
+                )
+                retriever = create_retriever(
+                    index=index,
+                    cutoff=args.cutoff,
+                    top_k_retriever=args.top_k_retriever,
+                    alpha=args.alpha,
+                    filters=filters,
+                )
+                nodes = get_nodes(query, retriever, reranker=reranker, cutoff=args.cutoff)
+                print_references(nodes)
+
+                prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
+                print("\n\nApply query to " + tag + " folder only")
+                output_response = get_llm_answer(llm, prefix, streaming=False)
+                print("**************************\n\n")
+                print(f"\n\n{query=}\n\n{tag=}\n\n{prefix=}\n\n{output_response.text=}\n")
+                print("\n\n**************************")
+
+                d["Answers"].append(output_response.text)
+                d["Main Source"].append(
+                    nodes[0].node.metadata["Source"]
+                    + ", page "
+                    + str(nodes[0].node.metadata["PageNumber"])
+                )
+
+            if args.output_folder:
+                output_df = pd.DataFrame(data=d)
+
+                suffix = "all_documents_mixed"
+                if tag:
+                    suffix = tag
+                elif args.folder:
+                    suffix = args.folder
+
+                xlsx_name = args.output_folder + "/extracted_info_" + suffix + ".xlsx"
+                print("Saving output to " + xlsx_name)
+                output_df.to_excel(xlsx_name, index=False)
