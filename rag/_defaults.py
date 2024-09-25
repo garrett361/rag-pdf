@@ -39,3 +39,10 @@ What question can be answered from the information provided in the document extr
 
 Only respond with the question.
 """).strip("\n")
+
+
+DEFAULT_SCORE_PROMPT = dedent("""
+You are an assistant who helps determine how relevant a given text excerpt is for answering a query. You will be provided the excerpt followed by the query.
+
+Rank the relevance of the excerpt for the query on a scale of 1 to 10. 1 means the excerpt is irrelevant, while 10 means it is very relevant. Respond only with this digit and nothing else.
+""").strip("\n")

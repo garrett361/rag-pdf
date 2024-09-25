@@ -1,12 +1,9 @@
 import argparse
 import os
 from copy import deepcopy
-from pprint import pprint
-from textwrap import dedent
 from typing import Optional
 
 import pandas as pd
-import torch
 import weaviate
 from llama_index.core import VectorStoreIndex
 from llama_index.core.postprocessor import SentenceTransformerRerank
@@ -16,10 +13,9 @@ from llama_index.core.schema import NodeWithScore, QueryBundle
 from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.llms.openllm import OpenLLM
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
-from transformers import AutoTokenizer, PreTrainedTokenizer
+from transformers import AutoTokenizer
 
 from rag._defaults import (
     DEFAULT_ALPHA,
@@ -27,12 +23,18 @@ from rag._defaults import (
     DEFAULT_HF_CHAT_MODEL,
     DEFAULT_HF_EMBED_MODEL,
     DEFAULT_MAX_NEW_TOKS,
-    DEFAULT_SYSTEM_PROMPT,
     DEFAULT_TEMP,
     DEFAULT_TOP_K_RETRIEVER,
     DEFAULT_TOP_P,
 )
-from rag._utils import get_tag_from_dir
+from rag._utils import (
+    get_llama3_1_instruct_str,
+    get_llm_answer,
+    get_local_llm,
+    get_tag_from_dir,
+    print_references,
+)
+from rag.llm_rerank import LLama31Reranker
 
 
 class QuestionAnsweredNodePostprocessor(BaseNodePostprocessor):
@@ -51,73 +53,6 @@ class QuestionAnsweredNodePostprocessor(BaseNodePostprocessor):
             )
 
         return copied_nodes
-
-
-def get_llama3_1_instruct_str(
-    query: str,
-    nodes: list[NodeWithScore],
-    tokenizer: PreTrainedTokenizer,
-    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
-) -> str:
-    context_str = ""
-    for node in nodes:
-        # print(f"Context: {node.metadata}")
-        context_str += node.text.replace("\n", "  \n")
-    # print(f"\nUsing {context_str=}\n")
-
-    context_and_query = f"""
- Please use the context provided below to answer the associated questions.
----------------------
-{context_str}
----------------------
-
-Query: {query}
-Answer:
-    """
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": dedent(context_and_query).strip("\n")},
-    ]
-    toks = tokenizer.apply_chat_template(messages, add_generation_prompt=True)
-    print(f"Prefix: {len(toks)=}")
-    return tokenizer.decode(toks)
-
-
-def get_local_llm(
-    model_name: str,
-    tokenizer: PreTrainedTokenizer,
-    max_new_tokens: int,
-    use_4bit_quant: bool,
-    generate_kwargs: dict,
-) -> HuggingFaceLLM:
-    print(f"Using HF model: {model_name}")
-
-    model_kwargs = {"torch_dtype": torch.bfloat16}
-    if use_4bit_quant:
-        if not torch.cuda.is_available():
-            raise ValueError("--use-4bit-quant requires a GPU")
-        from transformers import BitsAndBytesConfig
-
-        model_kwargs = {
-            "quantization_config": BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_use_double_quant=True,
-            )
-        }
-    else:
-        model_kwargs = {"torch_dtype": torch.bfloat16}
-    llm = HuggingFaceLLM(
-        model_name=model_name,
-        tokenizer_name=model_name,
-        generate_kwargs=generate_kwargs,
-        max_new_tokens=max_new_tokens,
-        stopping_ids=[tokenizer.eos_token_id],
-        model_kwargs=model_kwargs,
-    )
-    pprint(f"Loaded model {model_name}")
-    return llm
 
 
 def load_data(
@@ -195,9 +130,9 @@ def get_nodes(
             nodes = nodes[:1]
 
     if reranker is not None:
-        print("------------------\n\n")
-        print(f"Reranking {len(nodes)} nodes ")
-        print("\n\n------------------")
+        print("------------------\n")
+        print(f"Reranking {len(nodes)} nodes down to {reranker.top_n} ")
+        print("\n------------------")
         # Append the generated question to the node text prior to re-ranking so that the re-ranker
         # has additional, hopefully relevant text to match against.
         question_appended_nodes = QuestionAnsweredNodePostprocessor().postprocess_nodes(
@@ -215,33 +150,6 @@ def get_nodes(
 
     # print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
     return nodes
-
-
-def get_llm_answer(
-    llm,
-    prefix: str,
-    streaming: bool = False,
-) -> str:
-    output_response = (
-        llm.stream_complete(prefix, formatted=True) if streaming else llm.complete(prefix)
-    )
-    return output_response
-
-
-def print_references(nodes):
-    # TODO: @garrett.goon - Delete below, just for debugging/visuals
-    print("\n **** REFERENCES **** \n")
-    for idx, n in enumerate(nodes):
-        title = n.node.metadata["Source"]
-        page = n.node.metadata["PageNumber"]
-        text = n.node.text
-        newtext = text.encode("unicode_escape").decode("unicode_escape")
-        out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((n.score * 100),3)}% \n"
-        out_text = f"**Text:**  \n {newtext}  \n"
-
-        print(f"\nReference: {idx}")
-        print(f"\n{out_title=}")
-        print(f"{out_text=}\n")
 
 
 if __name__ == "__main__":
@@ -337,8 +245,15 @@ if __name__ == "__main__":
         type=float,
         help="Controls the balance between keyword (alpha=0.0) and vector (alpha=1.0) search",
     )
+    parser.add_argument(
+        "--st-reranker",
+        action="store_true",
+        help="Use a SentenceTransformerRerank model, if reranking. Default is to use the chat LLM to rerank.",
+    )
 
     args = parser.parse_args()
+    if args.st_reranker and args.top_k_reranker:
+        raise ValueError("--top-k-reranker must be set when --st-reranker is chosen")
 
     if sum((bool(args.query), bool(args.query_file))) != 1:
         raise ValueError("Exactly one of --query or --query-file must be provided.")
@@ -388,13 +303,18 @@ if __name__ == "__main__":
                 args.use_4bit_quant,
                 generate_kwargs,
             )
-
-        reranker = (
-            SentenceTransformerRerank(model="BAAI/bge-reranker-large", top_n=args.top_k_reranker)
-            if args.top_k_reranker
-            else None
-        )
-        # reranker = LLMRerank(llm=llm, top_n=3) if args.rerank else None
+        if args.top_k_reranker is None:
+            print("Using no reranker")
+            reranker = None
+        elif args.st_reranker:
+            # TODO: @garrett.goon - Don't hardcode ST model.
+            reranker = SentenceTransformerRerank(
+                model="BAAI/bge-reranker-large", top_n=args.top_k_reranker
+            )
+            print(f"Using {reranker.__class__.__name__}")
+        else:
+            reranker = LLama31Reranker(llm=llm, tokenizer=tokenizer, top_n=args.top_k_reranker)
+            print(f"Using {reranker.__class__.__name__}")
 
         if args.output_folder and not os.path.exists(args.output_folder):
             print(args.output_folder + " does not exist yet, creating it...")
