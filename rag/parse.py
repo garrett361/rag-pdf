@@ -130,7 +130,7 @@ def clean_parsed(json_file, llm, tokenizer):
                 question_answered = generate_completion(llm, tokenizer, prefix).text
                 print_in_box(
                     text + "\n\nQuestion Answered: " + question_answered,
-                    f" Generating Question({informative=}) ",
+                    f" Generating Question ({informative=}) ",
                 )
                 doc["metadata"]["question_answered"] = question_answered
                 results.append(doc)

@@ -1,3 +1,4 @@
+import io
 import textwrap
 from pathlib import Path
 from typing import Union
@@ -35,8 +36,14 @@ def print_in_box(
     top_border = "+" + top_header_segment + header + top_header_segment + "+"
     bottom_border = "+" + horizontal_edge * inner_border_len + "+"
 
-    # Print the box
-    print(top_border)
+    # Print the box with surrounding whitespace. StringIO for efficiency.
+    print_string = io.StringIO()
+    print_string.write("\n")
+    print_string.write(top_border)
+    print_string.write("\n")
     for line in lines:
-        print(f"{vertical_edge} {line:<{max_length}} {vertical_edge}")
-    print(bottom_border)
+        print_string.write(f"{vertical_edge} {line:<{max_length}} {vertical_edge}")
+        print_string.write("\n")
+    print_string.write(bottom_border)
+    print_string.write("\n\n")
+    print(print_string.getvalue(), flush=True)
