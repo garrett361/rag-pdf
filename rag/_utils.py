@@ -134,10 +134,9 @@ def print_in_box(
     assert len(horizontal_edge) == 1
     assert len(vertical_edge) == 1
     # Split the text into lines
-    wrapped_lines = textwrap.wrap(text, width=width, replace_whitespace=False)
     lines = []
-    for line in wrapped_lines:
-        lines.extend(line.split("\n"))
+    for line in text.split("\n"):
+        lines.extend(textwrap.wrap(line, width=width, replace_whitespace=False))
 
     # Find the length of the longest line
     max_length = max(len(line) for line in lines)
