@@ -13,6 +13,7 @@ MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
 # MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 QUERY_FILE = "test_queries.txt"
+TOP_K_RERANKER = "2"
 
 .PHONY: install
 install:
@@ -61,17 +62,17 @@ test-query:
 test-query-hosted:
 	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) $(ARGS)
 
-.PHONY: test-query-hosted-rerank
-test-query-hosted-rerank:
-	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker 4 $(ARGS)
+.PHONY: test-query-hosted-reranker
+test-query-hosted-reranker:
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:
 	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) $(ARGS)
 
-.PHONY: test-query-file-hosted-rerank
-test-query-file-hosted-rerank:
-	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker 4 $(ARGS)
+.PHONY: test-query-file-hosted-reranker
+test-query-file-hosted-reranker:
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
 
 .PHONY: test
 test:
@@ -93,4 +94,4 @@ test-ui-hosted:
 
 .PHONY: test-ui-hosted-reranker
 test-ui-hosted-reranker:
-	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker 4 $(ARGS)
+	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
