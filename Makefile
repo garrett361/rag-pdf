@@ -1,3 +1,5 @@
+# Pass ARGS for being able to pass additional args via the command line: make xxx ARGS="<args-here>"
+
 QUERY = "What is the plant composition?"
 HOSTED_CHAT = "http://llama-31-70b-jordan.models.mlds-kserve.us.rdlabs.hpecorp.net/v1"
 # HOSTED_CHAT = "http://llama-3-1-8b.pdk.10.6.39.90.sslip.io/v1"
@@ -36,40 +38,40 @@ clean:
 
 .PHONY: test-parse
 test-parse:
-	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --folder_tags
+	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags $(ARGS)
 
 .PHONY: test-parse-hosted-cleaned
 test-parse-hosted-cleaned:
-	python -m rag.parse --input ${INPUT_DIR} --output private/test/parsed --folder_tags --clean-parse-with-llm --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT}
+	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --clean-parse-with-llm --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
 
 .PHONY: test-embed
 test-embed:
-	python -m rag.embed --data-path private/test/parsed --path-to-db ${PATH_TO_DB}
+	python -m rag.embed --data-path private/test/parsed --path-to-db $(PATH_TO_DB) $(ARGS)
 
 
 .PHONY: test-embed-hosted
 test-embed-hosted:
-	python -m rag.embed --data-path private/test/parsed --path-to-db ${PATH_TO_DB} --embedding_model_path ${HOSTED_EMBED}
+	python -m rag.embed --data-path private/test/parsed --path-to-db $(PATH_TO_DB) --embedding_model_path $(HOSTED_EMBED) $(ARGS)
 
 .PHONY: test-query
 test-query:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_LOCAL} --folder ${FOLDER}
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_LOCAL) --folder $(FOLDER) $(ARGS)
 
 .PHONY: test-query-hosted
 test-query-hosted:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER}
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) $(ARGS)
 
 .PHONY: test-query-hosted-rerank
 test-query-hosted-rerank:
-	python -m rag.query --query '${QUERY}' --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED}  --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --top-k-reranker 4
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker 4 $(ARGS)
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:
-	python -m rag.query --query-file ${QUERY_FILE} --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER}
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) $(ARGS)
 
 .PHONY: test-query-file-hosted-rerank
 test-query-file-hosted-rerank:
-	python -m rag.query --query-file ${QUERY_FILE} --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --chat-model-endpoint ${HOSTED_CHAT} --embedding_model_path ${HOSTED_EMBED} --folder ${FOLDER} --output-folder ${OUTPUT_FOLDER} --top-k-reranker 4
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker 4 $(ARGS)
 
 .PHONY: test
 test:
@@ -87,8 +89,8 @@ test-hosted:
 
 .PHONY: test-ui-hosted
 test-ui-hosted:
-	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --embedding_model_path ${HOSTED_EMBED} --chat-model-endpoint ${HOSTED_CHAT} --streaming
+	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming $(ARGS)
 
 .PHONY: test-ui-hosted-reranker
 test-ui-hosted-reranker:
-	streamlit run rag/gui.py -- --path-to-db ${PATH_TO_DB} --model-name ${MODEL_NAME_HOSTED} --embedding_model_path ${HOSTED_EMBED} --chat-model-endpoint ${HOSTED_CHAT} --streaming --top-k-reranker 4
+	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker 4 $(ARGS)
