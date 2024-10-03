@@ -42,8 +42,20 @@ clean:
 test-parse:
 	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags $(ARGS)
 
-.PHONY: test-parse-hosted-cleaned
-test-parse-hosted-cleaned:
+.PHONY: test-parse-hosted
+test-parse-hosted:
+	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
+
+.PHONY: test-parse-hosted-filter
+test-parse-hosted-filter:
+	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --filter-parsed-with-llm --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
+
+.PHONY: test-parse-hosted-questions
+test-parse-hosted-questions:
+	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --add-questions --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
+
+.PHONY: test-parse-hosted-filter-questions
+test-parse-hosted-filter-questions:
 	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --filter-parsed-with-llm --add-questions --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
 
 .PHONY: test-embed

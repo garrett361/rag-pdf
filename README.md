@@ -61,10 +61,12 @@ For query:
 
 # Other Notes
 
-This branch uses `Weaviate` in order to play with hybrid search, which mixes lexical and vector
-search together. The results are very iffy, though. Finding sometimes that a very relevant node is
-returned with a score of precisely 0.0, which seems like a bug. Finding best results with the (now
-default) `cutoff = None` for similarity search to avoid filtering out such results.
+- See the many variants of commands in the `Makefile` for different workflows.
+- The experimental additions aren't well incorporated into the gui, yet.
+- This branch uses `Weaviate` in order to play with hybrid search, which mixes lexical and vector
+  search together. The results are very iffy, though. Finding sometimes that a very relevant node is
+  returned with a score of precisely 0.0, which seems like a bug. Finding best results with the (now
+  default) `cutoff = None` for similarity search to avoid filtering out such results.
 
 ### Example Workflow
 
