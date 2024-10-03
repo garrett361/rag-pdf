@@ -37,8 +37,8 @@ class LLama31Reranker(BaseNodePostprocessor):
     """
 
     llm: LLM = Field(description="The LLM to rerank with.")
-    top_n: int = Field(description="Number of nodes to return sorted by score.")
-    min_score: int = Field(description="Minimum score to keep")
+    top_n: Optional[int] = Field(description="Number of nodes to return sorted by score.")
+    min_score: Optional[int] = Field(description="Minimum score to keep")
     tokenizer: Union[AutoTokenizer, PreTrainedTokenizerFast] = Field(description="Tokenizer")
     system_prompt: str = Field(description="System prompt")
     _model: Any = PrivateAttr()
@@ -58,7 +58,7 @@ class LLama31Reranker(BaseNodePostprocessor):
             tokenizer=tokenizer,
             system_prompt=system_prompt,
         )
-        if sum(bool(top_n), bool(min_score)) != 1:
+        if sum((bool(top_n), bool(min_score))) != 1:
             raise ValueError("Exactly one of top_n or min_score must be provided.")
 
     @classmethod
@@ -89,14 +89,28 @@ class LLama31Reranker(BaseNodePostprocessor):
         reranked_scores_and_nodes = list(
             sorted(zip(scores, nodes, strict=True), key=lambda x: -x[0])
         )
-        for score, node in reranked_scores_and_nodes:
-            print_in_box(f"Query: {query_bundle.query_str}\n\nScore: {score}\n\n{node.text=}")
 
-        # reranked_nodes = [node for _, node in reranked_scores_and_nodes][: self.top_n]
-        reranked_nodes = [
-            node for score, node in reranked_scores_and_nodes if score >= self.min_score
-        ]
-        if not reranked_nodes:
+        # Debug/sanity check printing
+        crossed_min_score_threshold = self.min_score is None
+        for score, node in reranked_scores_and_nodes:
+            if not crossed_min_score_threshold and score < self.min_score:
+                crossed_min_score_threshold = True
+                threshold_str = f" MIN SCORE {self.min_score} CUTOFFF "
+                print(f"{threshold_str:X^80}")
+            print_in_box(
+                f"Query: {query_bundle.query_str}\n\nLLM Score: {score}\n\nSimilarity Score: {round((node.score * 100),3)}%\n\n{node.text=}"
+            )
+
+        if self.top_n:
             reranked_nodes = [node for _, node in reranked_scores_and_nodes][: self.top_n]
+        elif self.min_score:
+            reranked_nodes = [
+                node for score, node in reranked_scores_and_nodes if score >= self.min_score
+            ]
+            # Safety valve for the case where no node passes the threshold. Return the best single
+            # node.
+            if not reranked_nodes:
+                print(f"No nodes surpass score threshold ({self.min_score}). Returning best node.")
+                reranked_nodes = [node for _, node in reranked_scores_and_nodes][:1]
 
         return reranked_nodes

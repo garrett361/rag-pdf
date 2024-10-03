@@ -37,6 +37,35 @@ For query:
 
 - `pip install llama-index-llms-openllm==0.1.4`
 
+# Experimental Features
+
+- **Additional Post-Parsing Processing**:
+
+  - Use the chat LLM to judge whether each chunk is informative by answering a yes/no question.
+    Reject the chunk, if uninformative. See the `--filter-parsed-with-llm` flag for `rag/parse.py`
+
+  - For each chunk, use the LLM to generate up to three question which can be answered by the
+    chunk contents. These are added to the chunk as metadata, which affects the chunk embeddings and
+    may improve retrieval. See the `--add-questions` flag for `rag/parse.py`
+
+- **Querying**
+
+  - Reranking with the chat LLM. New `LLama31Reranker` class ranks every chunk on a scale from 1 to 10, which is used to re-rank. The default when supplying a `--top-k-reranker` flag to `rag/query.py`.
+  - The `LLama31Reranker` can either provide a fixed number of reranked results via the `--top-k-reranker` or return all results which surpass a minimum score threshold by setting `--min-score-reranker`. Mutually exclusive options.
+    `--rerank-with-questions` flag. The questions are only added for re-ranking; the questions are
+    not seen by the chat LLM at the generation step.
+  - Can instead use a default Sentence Transformer to perform the reranking by supplying an additional `--st-reranker` flag. Not compatible with `--min-score-reranker`.
+  - Optionally append the questions-answered metadata to the chunks before re-ranking with the
+    `--rerank-with-questions` flag. The questions are only added for re-ranking; the questions are
+    not seen by the chat LLM at the generation step.
+
+# Other Notes
+
+This branch uses `Weaviate` in order to play with hybrid search, which mixes lexical and vector
+search together. The results are very iffy, though. Finding sometimes that a very relevant node is
+returned with a score of precisely 0.0, which seems like a bug. Finding best results with the (now
+default) `cutoff = None` for similarity search to avoid filtering out such results.
+
 ### Example Workflow
 
 - Parse folder with docs and write chunks into `json` file via `python3 -m rag.parse --input <path-to-docs-dir>

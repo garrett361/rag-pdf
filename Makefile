@@ -13,7 +13,8 @@ MODEL_NAME_LOCAL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-70B-Instruct"
 # MODEL_NAME_HOSTED = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 QUERY_FILE = "test_queries.txt"
-TOP_K_RERANKER = "2"
+TOP_K_RERANKER = "3"
+MIN_SCORE_RERANKER = "8"
 
 .PHONY: install
 install:
@@ -64,7 +65,15 @@ test-query-hosted:
 
 .PHONY: test-query-hosted-reranker
 test-query-hosted-reranker:
-	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker $(TOP_K_RERANKER) --retrieve-with-questions $(ARGS)
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
+
+.PHONY: test-query-hosted-reranker-min-score
+test-query-hosted-reranker-min-score:
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --min-score-reranker $(MIN_SCORE_RERANKER) $(ARGS)
+
+.PHONY: test-query-hosted-reranker-min-score-questions
+test-query-hosted-reranker-min-score-questions:
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --min-score-reranker $(MIN_SCORE_RERANKER) --rerank-with-questions $(ARGS)
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:
@@ -72,7 +81,15 @@ test-query-file-hosted:
 
 .PHONY: test-query-file-hosted-reranker
 test-query-file-hosted-reranker:
-	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker $(TOP_K_RERANKER) --retrieve-with-questions $(ARGS)
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
+
+.PHONY: test-query-file-hosted-reranker-min-score
+test-query-file-hosted-reranker-min-score:
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --min-score-reranker $(MIN_SCORE_RERANKER) $(ARGS)
+
+.PHONY: test-query-file-hosted-reranker-min-score-questions
+test-query-file-hosted-reranker-min-score-questions:
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --min-score-reranker $(MIN_SCORE_RERANKER) --rerank-with-questions $(ARGS)
 
 .PHONY: test
 test:
@@ -94,4 +111,4 @@ test-ui-hosted:
 
 .PHONY: test-ui-hosted-reranker
 test-ui-hosted-reranker:
-	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker $(TOP_K_RERANKER) --retrieve-with-questions $(ARGS)
+	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker $(TOP_K_RERANKER) $(ARGS)

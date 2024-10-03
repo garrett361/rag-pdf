@@ -32,6 +32,7 @@ from rag._utils import (
     get_llm_answer,
     get_local_llm,
     get_tag_from_dir,
+    print_in_box,
     print_references,
 )
 from rag.llm_rerank import LLama31Reranker
@@ -137,7 +138,7 @@ def get_nodes(
 
     if reranker is not None:
         print("------------------\n")
-        print(f"Reranking {len(nodes)} nodes down to {reranker.top_n} ")
+        print(f"Reranking {len(nodes)} nodes")
         print("\n------------------")
         # Append the generated question to the node text prior to re-ranking so that the re-ranker
         # has additional, hopefully relevant text to match against.
@@ -157,7 +158,6 @@ def get_nodes(
         print(f"After reranking, {len(nodes)} nodes: {[n.node.id_ for n in nodes]=} ")
         print("\n\n------------------")
 
-    # print(f"NODES: {query=}, {cutoff=}, {[n.node.id_ for n in nodes]=}")
     return nodes
 
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
         "--cutoff",
         default=DEFAULT_CUTOFF,
         type=float,
-        help="Filter out docs with score below cutoff.",
+        help="Filter out docs with score below cutoff. (Default: None)",
     )
     parser.add_argument(
         "--use-4bit-quant",
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    if args.top_k_reranker or args.min_score_reranker:
+    if args.top_k_reranker and args.min_score_reranker:
         raise ValueError("Only provide one of --top-k-reranker or --min-score-reranker")
     if args.rerank_with_questions and not (args.top_k_reranker or args.min_score_reranker):
         raise ValueError(
@@ -332,7 +332,7 @@ if __name__ == "__main__":
                 args.use_4bit_quant,
                 generate_kwargs,
             )
-        if args.top_k_reranker is None:
+        if args.top_k_reranker is None and args.min_score_reranker is None:
             print("Using no reranker")
             reranker = None
         elif args.st_reranker:
@@ -420,9 +420,8 @@ if __name__ == "__main__":
                 prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
                 print("\n\nApply query to " + tag + " folder only")
                 output_response = get_llm_answer(llm, prefix, streaming=False)
-                print("**************************\n\n")
-                print(f"\n\n{query=}\n\n{tag=}\n\n{prefix=}\n\n{output_response.text=}\n")
-                print("\n\n**************************")
+                print(f"\n\n{query=}\n\n{tag=}\n\n{prefix=}")
+                print_in_box(output_response.text, "LLM RESPONSE")
 
                 d["Answers"].append(output_response.text)
                 d["Main Source"].append(

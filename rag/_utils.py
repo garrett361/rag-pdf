@@ -169,4 +169,4 @@ def print_references(nodes):
         newtext = text.encode("unicode_escape").decode("unicode_escape")
         out_title = f"**Source:** {title}  \n **Page:** {page}  \n **Similarity Score:** {round((n.score * 100),3)}% \n"
         out_text = f"**Text:**  \n {newtext}  \n"
-        print_in_box(f"\n{out_title=}\n\n{out_text=}", f"\nReference: {idx}")
+        print_in_box(f"{out_title=}\n\n{out_text=}", f"Reference: {idx}")
