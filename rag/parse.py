@@ -105,7 +105,9 @@ def generate_completion(llm, tokenizer, text, system_prompt=DEFAULT_SYSTEM_PROMP
 
 
 # From Liam
-def clean_parsed(json_file, llm, tokenizer):
+def post_process_parsed(
+    json_file: str, llm, tokenizer, filter_parsed_with_llm: bool, add_questions: bool
+) -> None:
     """
     Filter the results of the parsed function based on whether an LLM thinks the chunk is
     informative or not, and if so, include an LLM generated question that the chunk contains the
@@ -120,12 +122,14 @@ def clean_parsed(json_file, llm, tokenizer):
                     text = doc["metadata"]["text_as_html"]
                 else:
                     text = doc["content"]
-            informative = generate_completion(
-                llm, tokenizer, INFORMATIVE_PROMPT.format(context=text)
-            ).text
-            if informative.lower() == "no":
-                print_in_box(text, f" UNINFORMATIVE ({informative=}) ", "?", "?")
-            else:
+            if filter_parsed_with_llm:
+                informative = generate_completion(
+                    llm, tokenizer, INFORMATIVE_PROMPT.format(context=text)
+                ).text
+                if informative.lower() == "no":
+                    print_in_box(text, f" UNINFORMATIVE ({informative=}) ", "?", "?")
+                    continue
+            if add_questions:
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
                 print_in_box(
@@ -133,7 +137,7 @@ def clean_parsed(json_file, llm, tokenizer):
                     f" Generating Question ({informative=}) ",
                 )
                 doc["metadata"]["question_answered"] = question_answered
-                results.append(doc)
+            results.append(doc)
     with open(json_file, "w") as f:
         json.dump(results, f, indent=4)
 
@@ -147,10 +151,15 @@ def main(
     max_characters: int,
     new_after_n_chars: int,
     folder_tags: bool = False,
-    clean_parse_with_llm: bool = False,
+    filter_parsed_with_llm: bool = False,
+    add_questions: bool = False,
     model_name: Optional[str] = None,
     chat_model_endpoint: Optional[str] = None,
 ) -> None:
+    if (add_questions or filter_parsed_with_llm) and not model_name:
+        raise ValueError(
+            "model_name must be specified when add_questions or filter_parsed_with_llm is chosen"
+        )
     if chat_model_endpoint:
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         # TODO: @garrett.goon -  Don't hard code
@@ -167,9 +176,6 @@ def main(
                 max_tokens=max_new_tokens,
             )
         elif model_name:
-            assert (
-                clean_parse_with_llm
-            ), "--clean-parse-with-llm must be True if chat_model_endpoint"
             print(f"\nUsing local {model_name} LLM\n")
             llm = get_local_llm(
                 model_name,
@@ -211,9 +217,9 @@ def main(
                 new_after_n_chars,
                 tag,
             )
-    if clean_parse_with_llm:
+    if filter_parsed_with_llm or add_questions:
         for file in Path(output).rglob("*"):
-            clean_parsed(file, llm, tokenizer)
+            post_process_parsed(file, llm, tokenizer, filter_parsed_with_llm, add_questions)
 
 
 if __name__ == "__main__":
@@ -250,9 +256,14 @@ if __name__ == "__main__":
 
     # For using an LLM to clean up chunks
     parser.add_argument(
-        "--clean-parse-with-llm",
+        "--filter-parsed-with-llm",
         action="store_true",
-        help="name of chat model used to clean chunks",
+        help="filter-par",
+    )
+    parser.add_argument(
+        "--add-questions",
+        action="store_true",
+        help="Use the",
     )
     parser.add_argument(
         "--model-name",
@@ -274,8 +285,8 @@ if __name__ == "__main__":
     if args.folder_tags:
         logger.info("Using folder names as tags")
 
-    if args.clean_parse_with_llm and not args.model_name:
-        raise ValueError("A --model-name argument must be suped with --clean-parse-with-llm.")
+    if args.filter_parsed_with_llm and not args.model_name:
+        raise ValueError("A --model-name argument must be suped with --filter-parsed-with-llm.")
 
     nltk.download("punkt_tab")
 

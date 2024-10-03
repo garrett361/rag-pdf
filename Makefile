@@ -43,7 +43,7 @@ test-parse:
 
 .PHONY: test-parse-hosted-cleaned
 test-parse-hosted-cleaned:
-	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --clean-parse-with-llm --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
+	python -m rag.parse --input $(INPUT_DIR) --output private/test/parsed --folder_tags --filter-parsed-with-llm --add-questions --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) $(ARGS)
 
 .PHONY: test-embed
 test-embed:
