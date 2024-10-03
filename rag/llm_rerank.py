@@ -47,8 +47,8 @@ class LLama31Reranker(BaseNodePostprocessor):
         self,
         llm: OpenLLM,
         tokenizer: AutoTokenizer,
-        top_n: int = 2,
-        min_score: int = 5,
+        top_n: Optional[int] = None,
+        min_score: Optional[int] = None,
         system_prompt: str = DEFAULT_SCORE_PROMPT,
     ):
         super().__init__(
@@ -58,6 +58,8 @@ class LLama31Reranker(BaseNodePostprocessor):
             tokenizer=tokenizer,
             system_prompt=system_prompt,
         )
+        if sum(bool(top_n), bool(min_score)) != 1:
+            raise ValueError("Exactly one of top_n or min_score must be provided.")
 
     @classmethod
     def class_name(cls) -> str:

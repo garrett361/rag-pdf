@@ -196,6 +196,12 @@ if __name__ == "__main__":
         help="top k results for reranker",
     )
     parser.add_argument(
+        "--min-score-reranker",
+        default=None,
+        type=int,
+        help="min score threshold (between 1 and 10) when using the LLama31Reranker reranker",
+    )
+    parser.add_argument(
         "--temp",
         default=DEFAULT_TEMP,
         type=float,
@@ -266,8 +272,14 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    if args.rerank_with_questions and not args.top_k_reranker:
-        raise ValueError("--top-k-reranker must be set when --rerank-with-questions is chosen")
+    if args.top_k_reranker or args.min_score_reranker:
+        raise ValueError("Only provide one of --top-k-reranker or --min-score-reranker")
+    if args.rerank_with_questions and not (args.top_k_reranker or args.min_score_reranker):
+        raise ValueError(
+            "Either --top-k-reranker or --min-score-reranker must be set when --rerank-with-questions is chosen"
+        )
+    if args.min_score_reranker and args.st_reranker:
+        raise ValueError("--st-reranker cannot be set if --min-score-reranker is provided")
 
     if args.st_reranker and args.top_k_reranker:
         raise ValueError("--top-k-reranker must be set when --st-reranker is chosen")
@@ -330,7 +342,12 @@ if __name__ == "__main__":
             )
             print(f"Using {reranker.__class__.__name__}")
         else:
-            reranker = LLama31Reranker(llm=llm, tokenizer=tokenizer, top_n=args.top_k_reranker)
+            reranker = LLama31Reranker(
+                llm=llm,
+                tokenizer=tokenizer,
+                top_n=args.top_k_reranker,
+                min_score=args.min_score_reranker,
+            )
             print(f"Using {reranker.__class__.__name__}")
 
         if args.output_folder and not os.path.exists(args.output_folder):
