@@ -260,14 +260,14 @@ if __name__ == "__main__":
         help="Use a SentenceTransformerRerank model, if reranking. Default is to use the chat LLM to rerank.",
     )
     parser.add_argument(
-        "--retrieve-with-questions",
+        "--rerank-with-questions",
         action="store_true",
         help="",
     )
 
     args = parser.parse_args()
-    if args.retrieve_with_questions and not args.top_k_reranker:
-        raise ValueError("--top-k-reranker must be set when --retrieve-with-questions is chosen")
+    if args.rerank_with_questions and not args.top_k_reranker:
+        raise ValueError("--top-k-reranker must be set when --rerank-with-questions is chosen")
 
     if args.st_reranker and args.top_k_reranker:
         raise ValueError("--top-k-reranker must be set when --st-reranker is chosen")
@@ -391,7 +391,13 @@ if __name__ == "__main__":
                     alpha=args.alpha,
                     filters=filters,
                 )
-                nodes = get_nodes(query, retriever, reranker=reranker, cutoff=args.cutoff)
+                nodes = get_nodes(
+                    query,
+                    retriever,
+                    reranker=reranker,
+                    cutoff=args.cutoff,
+                    rerank_with_questions=args.rerank_with_questions,
+                )
                 print_references(nodes)
 
                 prefix = get_llama3_1_instruct_str(query, nodes, tokenizer)
