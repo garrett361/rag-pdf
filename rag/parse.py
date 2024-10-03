@@ -129,7 +129,7 @@ def clean_parsed(json_file, llm, tokenizer):
                 prefix = QA_PROMPT.format(context=text)
                 question_answered = generate_completion(llm, tokenizer, prefix).text
                 print_in_box(
-                    text + "\n\nQuestion Answered: " + question_answered,
+                    text + "\n\nQuestions answered by the above excerpt: " + question_answered,
                     f" Generating Question ({informative=}) ",
                 )
                 doc["metadata"]["question_answered"] = question_answered
@@ -155,7 +155,7 @@ def main(
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         # TODO: @garrett.goon -  Don't hard code
         generate_kwargs = {"do_sample": False}
-        max_new_tokens = 200
+        max_new_tokens = 256
 
         if chat_model_endpoint:
             print(f"\nUsing hosted LLM at: {chat_model_endpoint}\n")

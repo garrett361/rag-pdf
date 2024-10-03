@@ -103,9 +103,15 @@ def get_nodes(
     retriever: VectorIndexRetriever,
     reranker: Optional[BaseNodePostprocessor] = None,
     cutoff: Optional[float] = None,
+    rerank_with_questions: bool = False,
 ) -> list[NodeWithScore]:
     """
     Retrieve the most relevant chunks, given the query.
+
+    - rerank_with_questions: process the nodes with QuestionAnsweredNodePostprocessor before
+      re-ranking. Assumes the nodes have a QuestionAnswered metadata property; see
+      QuestionAnsweredNodePostprocessor.
+
     """
     # Wrap in a QueryBundle class in order to use reranker.
     # NOTE: @garrett.goon - Liam tried wrapping with query_str below, but found it didn't help.
@@ -135,14 +141,17 @@ def get_nodes(
         print("\n------------------")
         # Append the generated question to the node text prior to re-ranking so that the re-ranker
         # has additional, hopefully relevant text to match against.
-        question_appended_nodes = QuestionAnsweredNodePostprocessor().postprocess_nodes(
-            nodes, query_bundle
-        )
-        filtered_nodes = reranker.postprocess_nodes(question_appended_nodes, query_bundle)
-        filtered_node_ids = {fn.node.id_ for fn in filtered_nodes}
-        # Then return the original nodes without the question appended, so that generation does not
-        # rely on additional info not preset in the original chunks.
-        nodes = [n for n in nodes if n.node.id_ in filtered_node_ids]
+        if rerank_with_questions:
+            question_appended_nodes = QuestionAnsweredNodePostprocessor().postprocess_nodes(
+                nodes, query_bundle
+            )
+            filtered_nodes = reranker.postprocess_nodes(question_appended_nodes, query_bundle)
+            filtered_node_ids = {fn.node.id_ for fn in filtered_nodes}
+            # Then return the original nodes without the question appended, so that generation does not
+            # rely on additional info not preset in the original chunks.
+            nodes = [n for n in nodes if n.node.id_ in filtered_node_ids]
+        else:
+            nodes = reranker.postprocess_nodes(nodes, query_bundle)
 
         print("------------------\n\n")
         print(f"After reranking, {len(nodes)} nodes: {[n.node.id_ for n in nodes]=} ")
@@ -250,8 +259,16 @@ if __name__ == "__main__":
         action="store_true",
         help="Use a SentenceTransformerRerank model, if reranking. Default is to use the chat LLM to rerank.",
     )
+    parser.add_argument(
+        "--retrieve-with-questions",
+        action="store_true",
+        help="",
+    )
 
     args = parser.parse_args()
+    if args.retrieve_with_questions and not args.top_k_reranker:
+        raise ValueError("--top-k-reranker must be set when --retrieve-with-questions is chosen")
+
     if args.st_reranker and args.top_k_reranker:
         raise ValueError("--top-k-reranker must be set when --st-reranker is chosen")
 

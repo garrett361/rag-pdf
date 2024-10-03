@@ -17,9 +17,9 @@ DEFAULT_ALPHA = 0.2
 DEFAULT_TEMP = 0.2
 DEFAULT_CUTOFF = 0.05
 DEFAULT_TOP_K_RETRIEVER = 15
-DEFAULT_COMBINE_TEXT_UNDER_N_CHARS = 200
+DEFAULT_COMBINE_TEXT_UNDER_N_CHARS = 0
 DEFAULT_MAX_CHARACTERS = 1500
-DEFAULT_NEW_AFTER_N_CHARS = 1500
+DEFAULT_NEW_AFTER_N_CHARS = 500
 INFORMATIVE_PROMPT = dedent("""
 I will ask you if the text extract below looks informative. Examples of uninformative extracts include headers, footers, and random gibberish characters.
 
@@ -31,14 +31,14 @@ Was the above extract informative? Only respond with "yes" or "no".
 """).strip("\n")
 
 QA_PROMPT = dedent("""
-What question can be answered from the information provided in the document extract below?
+Please write a list of three or fewer questions which can be aswered from the information provided in the document extract below?
 
 ---------------------
 {context}
 ---------------------
 
-Only respond with the question.
-""").strip("\n")
+Write the list of three or fewer questions, and nothing else, below.  Questions:\n
+""")
 
 
 DEFAULT_SCORE_PROMPT = dedent("""

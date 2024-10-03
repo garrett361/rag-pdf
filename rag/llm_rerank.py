@@ -8,7 +8,7 @@ from llama_index.llms.openllm import OpenLLM
 from transformers import AutoTokenizer, PreTrainedTokenizer, PreTrainedTokenizerFast
 
 from rag._defaults import DEFAULT_SCORE_PROMPT
-from rag._utils import get_llama3_1_score_str, get_llm_answer
+from rag._utils import get_llama3_1_score_str, get_llm_answer, print_in_box
 
 
 def get_llama3_1_score(
@@ -30,6 +30,7 @@ def get_llama3_1_score(
     return score
 
 
+# TODO: @garrett.goon - Remove min_score test code
 class LLama31Reranker(BaseNodePostprocessor):
     """
     LLama 3.1 reranker class. Assumes and endpoint (OpenLLM class) is being used for now.
@@ -37,6 +38,7 @@ class LLama31Reranker(BaseNodePostprocessor):
 
     llm: LLM = Field(description="The LLM to rerank with.")
     top_n: int = Field(description="Number of nodes to return sorted by score.")
+    min_score: int = Field(description="Minimum score to keep")
     tokenizer: Union[AutoTokenizer, PreTrainedTokenizerFast] = Field(description="Tokenizer")
     system_prompt: str = Field(description="System prompt")
     _model: Any = PrivateAttr()
@@ -46,9 +48,16 @@ class LLama31Reranker(BaseNodePostprocessor):
         llm: OpenLLM,
         tokenizer: AutoTokenizer,
         top_n: int = 2,
+        min_score: int = 5,
         system_prompt: str = DEFAULT_SCORE_PROMPT,
     ):
-        super().__init__(top_n=top_n, llm=llm, tokenizer=tokenizer, system_prompt=system_prompt)
+        super().__init__(
+            top_n=top_n,
+            min_score=min_score,
+            llm=llm,
+            tokenizer=tokenizer,
+            system_prompt=system_prompt,
+        )
 
     @classmethod
     def class_name(cls) -> str:
@@ -78,9 +87,14 @@ class LLama31Reranker(BaseNodePostprocessor):
         reranked_scores_and_nodes = list(
             sorted(zip(scores, nodes, strict=True), key=lambda x: -x[0])
         )
-        # for score, node in reranked_scores_and_nodes:
-        #     print_in_box(f"Query: {query_bundle.query_str}\n\nScore: {score}\n\n{node.text=}")
+        for score, node in reranked_scores_and_nodes:
+            print_in_box(f"Query: {query_bundle.query_str}\n\nScore: {score}\n\n{node.text=}")
 
-        reranked_nodes = [node for _, node in reranked_scores_and_nodes][: self.top_n]
+        # reranked_nodes = [node for _, node in reranked_scores_and_nodes][: self.top_n]
+        reranked_nodes = [
+            node for score, node in reranked_scores_and_nodes if score >= self.min_score
+        ]
+        if not reranked_nodes:
+            reranked_nodes = [node for _, node in reranked_scores_and_nodes][: self.top_n]
 
         return reranked_nodes

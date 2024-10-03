@@ -64,7 +64,7 @@ test-query-hosted:
 
 .PHONY: test-query-hosted-reranker
 test-query-hosted-reranker:
-	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
+	python -m rag.query --query '$(QUERY)' --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED)  --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --top-k-reranker $(TOP_K_RERANKER) --retrieve-with-questions $(ARGS)
 
 .PHONY: test-query-file-hosted
 test-query-file-hosted:
@@ -72,7 +72,7 @@ test-query-file-hosted:
 
 .PHONY: test-query-file-hosted-reranker
 test-query-file-hosted-reranker:
-	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
+	python -m rag.query --query-file $(QUERY_FILE) --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --chat-model-endpoint $(HOSTED_CHAT) --embedding_model_path $(HOSTED_EMBED) --folder $(FOLDER) --output-folder $(OUTPUT_FOLDER) --top-k-reranker $(TOP_K_RERANKER) --retrieve-with-questions $(ARGS)
 
 .PHONY: test
 test:
@@ -94,4 +94,4 @@ test-ui-hosted:
 
 .PHONY: test-ui-hosted-reranker
 test-ui-hosted-reranker:
-	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker $(TOP_K_RERANKER) $(ARGS)
+	streamlit run rag/gui.py -- --path-to-db $(PATH_TO_DB) --model-name $(MODEL_NAME_HOSTED) --embedding_model_path $(HOSTED_EMBED) --chat-model-endpoint $(HOSTED_CHAT) --streaming --top-k-reranker $(TOP_K_RERANKER) --retrieve-with-questions $(ARGS)
